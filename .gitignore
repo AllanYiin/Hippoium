@@ -1,0 +1,55 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Build / distribution
+build/
+dist/
+downloads/
+.eggs/
+*.egg-info/
+wheelhouse/
+
+# Packaging metadata
+.Python
+*.egg
+.installed.cfg
+
+# Logs & coverage
+logs/
+*.log
+.coverage
+htmlcov/
+.tox/
+.nox/
+cache/
+.cache/
+
+# Testing
+.hypothesis/
+nosetests.xml
+coverage.xml
+
+# IDEs & editors
+.idea/
+.vscode/
+*.swp
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Typing / static-analysis
+.mypy_cache/
+.pyre/
+
+# Local env files
+.env.*

@@ -1,0 +1,46 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name            = "hippoium"
+version         = "0.1.0"
+description     = "Memory & context management layer for LLMs—dedupe, diff-patch, neg-RAG, hierarchical memory, auto LoRA corpus."
+readme          = "README.md"
+authors         = [{ name = "Hippoium Team", email = "dev@hippoium.ai" }]
+license         = { file = "LICENSE" }
+requires-python = ">=3.9"
+
+dependencies = [
+    "pydantic>=2.0",
+    "openai>=1.10",
+    "typing_extensions>=4.0",
+    "numpy>=1.24",
+    "scikit-learn>=1.3",
+    "pandas>=2.2",
+    "tqdm>=4.66"
+]
+
+[project.optional-dependencies]
+# Development / CI
+dev = [
+    "pytest",
+    "black",
+    "ruff",
+    "pre-commit"
+]
+
+# LoRA fine-tuning pipeline
+train = [
+    "torch>=2.3",
+    "transformers>=4.41",
+    "peft>=0.12"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "ports*", "adapters*"]
+
+[project.urls]
+"Source" = "https://github.com/allanyiin/hippoium"
+"Tracker" = "https://github.com/allanyiin/hippoium/issues"
