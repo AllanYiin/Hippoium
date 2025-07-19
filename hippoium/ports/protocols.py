@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Sequence, Protocol, runtime_checkable
+from typing import Any, List, Sequence, Protocol, runtime_checkable
 from .schemas import Message, Artifact
 from .types import Score, TokenCount
 
@@ -16,6 +16,23 @@ class Storage(Protocol):
 
     @abstractmethod
     def delete(self, key: str) -> None: ...
+
+
+@runtime_checkable
+class CacheProtocol(Protocol):
+    """Unified cache interface for memory tiers."""
+
+    @abstractmethod
+    def get(self, key: str) -> Any | None:
+        """Return cached value or ``None`` if absent/expired."""
+
+    @abstractmethod
+    def put(self, key: str, value: Any) -> None:
+        """Store value into cache, applying eviction if necessary."""
+
+    @abstractmethod
+    def delete(self, key: str) -> None:
+        """Remove value associated with key if present."""
 
 
 class WriteBackAPI(ABC):
