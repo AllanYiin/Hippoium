@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from hippoium.core.cer.cache import TierCache
 from hippoium.core.memory.stores import SCache, MBuffer, LVector, ColdStore
-from hippoium.ports.types import MemTier
+from hippoium.ports.port_types import MemTier
 
 
 def test_scache_basic_ttl_and_capacity():

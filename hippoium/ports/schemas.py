@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List, Any
-from .types import MsgLabel, ArtifactType
+from .port_types import MsgLabel, ArtifactType
 
 
 class Message(BaseModel):

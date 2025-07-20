@@ -1,6 +1,6 @@
 import re
 from typing import Sequence
-from hippoium.ports.types import TokenCount
+from hippoium.ports.port_types import TokenCount
 
 _TOKENIZER_RE = re.compile(r"\w+|[^\w\s]", re.UNICODE)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import difflib
 from typing import List
-from hippoium.ports.types import DedupStrategy, TrimPolicy
+from hippoium.ports.port_types import DedupStrategy, TrimPolicy
 from hippoium.core.utils.hasher import hash_text
 from hippoium.core.utils.token_counter import count_tokens
 

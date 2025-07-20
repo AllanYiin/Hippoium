@@ -6,7 +6,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta
 from typing import Any
 
-from hippoium.ports.types import MemTier
+from hippoium.ports.port_types import MemTier
 from hippoium.ports.protocols import CacheProtocol
 from hippoium.core.utils.token_counter import count_tokens
 

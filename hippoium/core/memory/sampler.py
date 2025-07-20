@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import List, Tuple
 from random import random
 from hippoium.ports.schemas import Message
-from hippoium.ports.types import SampleStage
+from hippoium.ports.port_types import SampleStage
 
 
 class MemorySampler:
