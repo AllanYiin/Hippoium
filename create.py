@@ -82,7 +82,7 @@ PROJECT_FILES = [
     "hippoium/adapters/openai.py",
     "hippoium/adapters/anthropic.py",
     "hippoium/adapters/local.py",
-    "hippoium/adapters/http.py",
+    "hippoium/adapters/http_adapter.py",
 
     # ── factories ────────────────────────
     "hippoium/factories/__init__.py",
