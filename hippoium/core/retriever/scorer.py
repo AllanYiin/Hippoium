@@ -3,7 +3,7 @@ Hybrid retrieval scorer: pos-sim − β × neg-sim.
 """
 from __future__ import annotations
 from typing import Sequence, List
-from hippoium.ports.types import ScoreFn
+from hippoium.ports.port_types import ScoreFn
 from hippoium.ports.schemas import Message
 from hippoium.ports.constants import DEFAULT_BETA
 import random

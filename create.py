@@ -12,7 +12,7 @@ PROJECT_FILES = [
 
     # ── ports ─────────────────────────────
     "hippoium/ports/__init__.py",
-    "hippoium/ports/types.py",
+    "hippoium/ports/port_types.py",
     "hippoium/ports/protocols.py",
     "hippoium/ports/events.py",
     "hippoium/ports/exceptions.py",

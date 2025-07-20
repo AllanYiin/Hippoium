@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Sequence, Protocol, runtime_checkable
 from .schemas import Message, Artifact
-from .types import Score, TokenCount
+from .port_types import Score, TokenCount
 
 
 @runtime_checkable

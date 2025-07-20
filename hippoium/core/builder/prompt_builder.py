@@ -3,7 +3,7 @@ PromptBuilder – assemble trimmed chunks into final prompt.
 """
 from __future__ import annotations
 from typing import List
-from hippoium.ports.types import TrimPolicy
+from hippoium.ports.port_types import TrimPolicy
 from hippoium.core.cer.compressor import Compressor
 from hippoium.core.utils.token_counter import count_tokens
 from hippoium.ports.constants import MAX_TOKENS_PROMPT

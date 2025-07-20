@@ -4,7 +4,7 @@ Tiered cache gateway – routes get/put to S/M/L/COLD stores.
 from datetime import timedelta
 from typing import Any
 
-from hippoium.ports.types import MemTier
+from hippoium.ports.port_types import MemTier
 from hippoium.ports.protocols import CacheProtocol
 from hippoium.core.memory.stores import SCache, MBuffer, LVector, ColdStore
 

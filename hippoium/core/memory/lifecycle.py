@@ -3,7 +3,7 @@ Lifecycle manager – TTL & rollback helpers for memory tiers.
 """
 from __future__ import annotations
 from datetime import datetime, timedelta
-from hippoium.ports.types import MemTier
+from hippoium.ports.port_types import MemTier
 from hippoium.core.memory.stores import SCache, MBuffer, LVector, ColdStore
 
 

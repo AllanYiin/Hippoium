@@ -2,7 +2,7 @@
 Inject negative prompts / system guards into prompt template.
 """
 from __future__ import annotations
-from hippoium.ports.types import GuardAction
+from hippoium.ports.port_types import GuardAction
 from typing import List
 
 
