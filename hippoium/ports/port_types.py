@@ -1,3 +1,4 @@
+from __future__ import annotations
 __all__ = [
     "MsgLabel",
     "MemTier",
@@ -13,8 +14,13 @@ __all__ = [
     "TokenCount",
 ]
 
+from dataclasses import dataclass, field
+import enum
 from enum import Enum, auto
-from typing import Literal
+from typing import Literal, List, Dict, Any, Optional
+
+
+
 
 
 class MsgLabel(Enum):
@@ -80,3 +86,38 @@ class SampleStage(str, Enum):
 
 Score = float  # alias for readability
 TokenCount = int
+
+
+class Role(str, enum.Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+@dataclass
+class ChatTurn:
+    role: Role
+    content: str
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class ContextRecord:
+    """MCP write-side payload (= one ChatCompletion message)."""
+    role: Role
+    content: str
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class ContextQuery:
+    """MCP read-side payload (scope & filter)."""
+    scope: str          # "user" | "task" | "topic"
+    key: str            # user-id / task-id / topic-label
+    prompt: str         # current user prompt (for relevance)
+    template_id: str = "default"
+    exclude_err: bool = True
+    include_negative_ids: Optional[List[str]] = None
+
+@dataclass
+class ContextBundle:
+    """Returned to MCP — already是 prompt messages list."""
+    messages: List[Dict[str, str]]    # role/content dict list
