@@ -11,8 +11,8 @@ __all__ = [
     "PatchFormat",
     "SampleStage",
     "Score",
-    "TokenCount",
-]
+    "TokenCount","ContextQuery","ContextBundle"
+,"ChatTurn"]
 
 from dataclasses import dataclass, field
 import enum

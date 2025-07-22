@@ -1,8 +1,32 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Sequence, Protocol, runtime_checkable
 from .schemas import Message, Artifact
-from .port_types import Score, TokenCount
+# hippoium/ports/protocols.py
 
+from abc import ABC, abstractmethod
+from typing import List
+from hippoium.ports.port_types import *
+
+
+class ContextEngineProtocol(ABC):
+    """
+    最小對外介面；任何框架或 Model Context Protocol 只需依賴此抽象。
+    """
+
+    # ------------------- write ------------------- #
+    @abstractmethod
+    def write_turn(self, record: ContextRecord) -> None:
+        ...
+
+    # ------------------- read -------------------- #
+    @abstractmethod
+    def get_context_for_scope(self, query: ContextQuery) -> ContextBundle:
+        ...
+
+    # （選擇性）除錯用途：匯出目前記憶全部內容
+    @abstractmethod
+    def dump_memory(self) -> List[dict]:
+        ...
 
 @runtime_checkable
 class Storage(Protocol):
