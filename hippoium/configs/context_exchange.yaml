@@ -1,0 +1,9 @@
+
+default_llm_provider: anthropic     # Default LLM provider (e.g., openai, anthropic, etc.)
+default_output_format: mcp         # Default context output format (hippoium / mcp / a2a)
+auto_detect_format: true           # Enable auto-detection of incoming context format
+
+# Register available context converters
+converters:
+  mcp: hippoium.utils.convert_mcp.MCPConverter   # Path to the MCP converter class
+  a2a: hippoium.utils.convert_a2a.A2AConverter   # Path to the A2A converter class
