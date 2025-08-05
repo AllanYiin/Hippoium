@@ -17,8 +17,8 @@ __all__ = [
     "PatchFormat",
     "SampleStage",
     "Score",
-    "TokenCount","ContextQuery","ContextBundle"
-,"ChatTurn"]
+    "TokenCount","ContextQuery","ContextBundle","DocGraph","Chunk","GraphEdge"
+,"ChatTurn","EdgeType","Artifact","Message","RetrievalRequest"]
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -164,7 +164,8 @@ class GraphEdge:
 class DocGraph:
     parent_id: str
     nodes: Dict[str, Chunk]
-    edges: List[GraphEdge] = field(default_factory=list)
+    edges: List[GraphEdge] = field(default_factory=list)  # ★ 加這行
+
 
     # —— utility helpers ——
     def iter_out(self, uid: str, rel: EdgeType | None = None):
