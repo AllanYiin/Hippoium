@@ -3,7 +3,7 @@ Auto-label incoming/outgoing messages as OK/WARN/ERR.
 """
 from __future__ import annotations
 import re
-from hippoium.ports.schemas import Message
+from hippoium.ports.types import Message
 from hippoium.ports.port_types import MsgLabel
 
 

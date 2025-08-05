@@ -16,7 +16,7 @@ PROJECT_FILES = [
     "hippoium/ports/protocols.py",
     "hippoium/ports/events.py",
     "hippoium/ports/exceptions.py",
-    "hippoium/ports/schemas.py",
+
 
     # ── core ─────────────────────────────
     "hippoium/core/__init__.py",

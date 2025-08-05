@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Sequence, Protocol, runtime_checkable
-from .schemas import Message, Artifact
-# hippoium/ports/protocols.py
+from .types import Message, Artifact
+from hippoium.ports.port_types import ContextRecord
 
 from abc import ABC, abstractmethod
 from typing import List

@@ -3,7 +3,7 @@ PairBuilder – align messages into (prompt, completion) pairs.
 """
 from __future__ import annotations
 from typing import List, Tuple
-from hippoium.ports.schemas import Message
+from hippoium.ports.types import Message
 
 
 class PairBuilder:
