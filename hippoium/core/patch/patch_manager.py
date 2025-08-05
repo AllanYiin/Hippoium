@@ -3,7 +3,7 @@ PatchManager – MVCC-style artifact version control.
 """
 from __future__ import annotations
 from typing import Dict
-from hippoium.ports.types import Artifact
+from hippoium.ports.port_types import Artifact
 from hippoium.core.utils.hasher import hash_text
 from .diff_generator import generate_delta
 

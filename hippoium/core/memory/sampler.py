@@ -4,7 +4,7 @@ MemorySampler – selects high-value memories for LoRA corpus.
 from __future__ import annotations
 from typing import List, Tuple
 from random import random
-from hippoium.ports.types import Message
+from hippoium.ports.port_types import Message
 from hippoium.ports.port_types import SampleStage
 
 

@@ -4,7 +4,7 @@ Negative Vault engine – persists & retrieves negative samples.
 from __future__ import annotations
 from pathlib import Path
 from typing import List
-from hippoium.ports.types import Message
+from hippoium.ports.port_types import Message
 from hippoium.core.utils.serializer import to_json, from_json
 
 
