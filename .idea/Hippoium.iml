@@ -9,6 +9,9 @@
       <sourceFolder url="file://$MODULE_DIR$/hippoium/ports" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hippoium/tools" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/hippoium" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/hippoium/configs" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/hippoium/utils" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
       <excludeFolder url="file://$MODULE_DIR$/examples" />
       <excludeFolder url="file://$MODULE_DIR$/examples_plugins" />
