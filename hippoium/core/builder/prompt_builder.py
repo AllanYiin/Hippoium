@@ -3,7 +3,7 @@ PromptBuilder – assemble trimmed chunks into final prompt.
 """
 from __future__ import annotations
 from typing import List, Optional
-from hippoium.ports.mcp import MemoryItem
+from hippoium.ports.mcp import MemoryItem, ToolSpec
 from hippoium.core.builder.template_registry import TemplateRegistry
 
 
@@ -21,12 +21,16 @@ class PromptBuilder:
         self,
         template_id: Optional[str] = None,
         context: List[MemoryItem] = [],
-        user_query: str = ""
+        user_query: str = "",
+        negative_examples: Optional[List[str]] = None,
+        tools: Optional[List[ToolSpec]] = None,
     ) -> List[dict]:
         """
         Returns a list of {"role": ..., "content": ...} messages suitable for Chat API.
         """
         messages: List[dict] = []
+        negative_examples = negative_examples or []
+        tools = tools or []
 
         if template_id:
             template = self.registry.get_template(template_id)
@@ -41,6 +45,16 @@ class PromptBuilder:
                         history_lines.append(f"{role.capitalize()}: {item.content}")
                     fill_vals["history"] = "\n".join(history_lines)
                     fill_vals["context"] = fill_vals["history"]
+
+                if any(slot in slots for slot in ("negative_examples", "negatives")):
+                    neg_lines = [f"System: {txt}" for txt in negative_examples]
+                    neg_text = "\n".join(neg_lines)
+                    fill_vals["negative_examples"] = neg_text
+                    fill_vals["negatives"] = neg_text
+
+                if "tools" in slots:
+                    tool_lines = [f"{t.name}: {t.description or ''}".strip() for t in tools]
+                    fill_vals["tools"] = "\n".join(tool_lines)
 
                 if "user_query" in slots:
                     fill_vals["user_query"] = user_query

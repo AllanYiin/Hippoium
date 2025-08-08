@@ -4,6 +4,7 @@ from typing import Optional, Dict, List, Any
 from hippoium.ports.protocols import ContextEngineProtocol
 from hippoium.core.memory import stores  # assuming stores.py defines SCache, MBuffer, LVector
 from hippoium.ports.mcp import MemoryItem
+from hippoium.core.cer.compressor import Compressor
 
 class DefaultContextEngine(ContextEngineProtocol):
     """
@@ -131,29 +132,20 @@ class DefaultContextEngine(ContextEngineProtocol):
         return "OK"
 
     def _compress_history(self, history: List[MemoryItem]) -> List[MemoryItem]:
-        """
-        Compress context by removing redundant tokens and applying simple diff compression.
-        Returns a possibly reduced list of MemoryItem.
-        """
+        """利用 Compressor 模組進行 Hash 去重與 Diff-Patch 壓縮。"""
         if not history:
             return history
-        # If number of items exceeds 50, drop older ones (basic retention policy)
         if len(history) > 50:
             history = history[-50:]
-        # Token-level deduplication across adjacent messages (remove exact overlaps at boundaries)
-        compressed: List[MemoryItem] = [history[0]]
-        for prev_item, curr_item in zip(history[:-1], history[1:]):
-            prev_text = prev_item.content
-            curr_text = curr_item.content
-            # Remove duplicate trailing tokens from prev or leading tokens from curr
-            overlap = _common_overlap(prev_text, curr_text)
-            if overlap:
-                # Replace the overlapping part in curr_text with a placeholder or remove it
-                curr_text = curr_text[len(overlap):].lstrip()
-            # Reconstruct MemoryItem for curr with updated content
-            new_item = MemoryItem(content=curr_text, metadata=dict(curr_item.metadata))
-            compressed.append(new_item)
-        return compressed
+
+        texts = [item.content for item in history]
+        compressed_texts = Compressor().compress(texts)
+        compressed_items: List[MemoryItem] = []
+        for item, new_text in zip(history, compressed_texts):
+            new_meta = dict(item.metadata or {})
+            new_meta["compressed"] = True
+            compressed_items.append(MemoryItem(content=new_text, metadata=new_meta))
+        return compressed_items
 
 # Helper function for compression: find common overlap between end of text1 and start of text2
 def _common_overlap(text1: str, text2: str) -> str:
