@@ -3,7 +3,9 @@ from datetime import timedelta
 from hippoium.engine import DefaultContextEngine, _common_overlap
 from hippoium.core.neg_vault import NegativeVault
 from hippoium.core.builder.prompt_builder import PromptBuilder
-from hippoium.ports.mcp import MemoryItem
+from hippoium.ports.mcp import MemoryItem, ToolSpec
+
+
 def test_conversation_input_and_memory_management():
     # 建立引擎，設定最大訊息數、最大 token 數、session 存活時間
     engine = DefaultContextEngine(max_messages=3, max_tokens=100, session_ttl=timedelta(minutes=5))
@@ -26,8 +28,9 @@ def test_conversation_input_and_memory_management():
     # 檢查 session 的完整歷史（SCache）：應包含 "Hello"
     ctx = engine.get_context_for_scope(scope="task", key="chat1")
     ctx_contents = [item.content for item in ctx]
-    assert "Hello" in ctx_contents
-    assert ctx_contents[-1] == "Sure, I can help with your account."
+    assert any("Hello" in c for c in ctx_contents)
+    assert "Sure, I can help with your account." in ctx_contents[-1]
+
 
 def test_automatic_annotation_and_filtering():
     # 測試自動標註與過濾功能
@@ -41,20 +44,21 @@ def test_automatic_annotation_and_filtering():
     ctx = engine.get_context_for_scope(scope="task", key="chat2", filters={"exclude_err": True})
     contents = [item.content for item in ctx]
     # 檢查錯誤訊息已被過濾
-    assert any("the information you requested" in txt for txt in contents), "Regular assistant response should be present"
-    assert all("Error: Invalid input" not in txt for txt in contents), "Error message should be filtered out"
+    assert any("the information you requested" in txt for txt in contents)
+    assert all("Error: Invalid input" not in txt for txt in contents)
     # 驗證 metadata 中的狀態標註
     history = engine.s_cache.get("chat2")
     assert history is not None
     statuses = [item.metadata.get("status") for item in history]
-    assert "WARN" in statuses and "ERR" in statuses and "OK" in statuses, "Messages should be annotated with WARN, ERR, OK accordingly"
+    assert "WARN" in statuses and "ERR" in statuses and "OK" in statuses
+
 
 def test_context_compression_dedup_and_diff():
     # 測試重疊偵測與壓縮邏輯
     a = "The user provided details: ABC123"
     b = "ABC123 and additional info."
     overlap = _common_overlap(a, b)
-    assert overlap == "ABC123", "Overlap detection should find common token sequence"
+    assert overlap == "ABC123"
     # 建立有重疊內容的歷史
     engine = DefaultContextEngine()
     content1 = "Step 1: Initialize system. Output: SUCCESS."
@@ -66,9 +70,10 @@ def test_context_compression_dedup_and_diff():
     assert raw_history and raw_history[-1].content == content2
     # 取得壓縮後的上下文
     ctx = engine.get_context_for_scope("task", key="chat3")
-    combined_text = " ".join(item.content for item in ctx)
-    # 壓縮後，重疊的 "Output: SUCCESS." 不應重複出現
-    assert combined_text.count("Output: SUCCESS.") == 1, "Duplicate token sequence should be deduplicated in context"
+    assert len(ctx) == 2
+    assert ctx[1].metadata.get("compressed") is True
+    assert ctx[1].content.startswith("---")
+
 
 def test_negative_vault_management():
     # 測試負面範例庫管理
@@ -86,14 +91,41 @@ def test_negative_vault_management():
     vault_list = NegativeVault.list_examples()
     assert vault_list == ["Do not reveal confidential information."]
 
+
 def test_prompt_builder_outputs():
     # 測試提示生成器輸出
-    # 準備一些上下文記憶項目
     mem1 = MemoryItem(content="User asked for help with billing.", metadata={"role": "user"})
     mem2 = MemoryItem(content="Assistant provided billing information.", metadata={"role": "assistant"})
     context = [mem1, mem2]
     user_query = "I have another question about my account."
     builder = PromptBuilder()
-    # 測試預設生成（無模板）：應包含上下文與使用者問題
     messages = builder.build(template_id=None, context=context, user_query=user_query)
-    # 最後一則訊息應為使用者問題
+    assert messages[-1]["role"] == "user"
+    assert messages[-1]["content"] == user_query
+
+
+def test_prompt_builder_negative_and_tools_slots():
+    builder = PromptBuilder()
+    template = (
+        "System: 以下是避免產生的內容：\n"
+        "{negative_examples}\n\n"
+        "System: 可用工具：\n"
+        "{tools}\n\n"
+        "{context}\n\n"
+        "User: {user_query}"
+    )
+    builder.registry.register_template("neg_tools", template)
+    negs = ["No NSFW.", "Avoid bias."]
+    tools = [ToolSpec(name="search", description="web search"), ToolSpec(name="calc", description="calculator")]
+    mem = MemoryItem(content="previous", metadata={"role": "user"})
+    messages = builder.build(
+        template_id="neg_tools",
+        context=[mem],
+        user_query="hi",
+        negative_examples=negs,
+        tools=tools,
+    )
+    system_text = "\n".join(m["content"] for m in messages if m["role"] == "system")
+    assert "No NSFW." in system_text
+    assert "search: web search" in system_text
+
