@@ -22,14 +22,22 @@
 
 ## 📦 安裝
 
+### 本地安裝
+
 ```bash
-# 建議使用 Python 3.9 以上
+# 建議使用 Python 3.9 以上
 python -m venv .venv && source .venv/bin/activate
-pip install hippoium            # 僅核心功能
-# 或開發模式
-pip install -e .[dev]            # 含測試與格式化工具
-# 若需 LoRA 訓練管線
-pip install .[train]
+pip install -e .            # 本地開發安裝
+pip install -e .[dev]        # 含測試與格式化工具
+pip install -e .[train]      # 需要 LoRA 訓練管線時使用
+```
+
+### PyPI（可選）
+
+若已發布至 PyPI，可直接安裝核心功能：
+
+```bash
+pip install hippoium
 ```
 
 > **注意**：LoRA 訓練需額外安裝 `torch`、`transformers`、`peft`，已在 `[train]` extra 中列出。
@@ -38,20 +46,33 @@ pip install .[train]
 
 ## 🚀 快速上手
 
+> **提醒**：以下範例使用 Mock 客戶端，不會呼叫任何真實 LLM（請在每次對話都記得這是 Mock 模式）。
+
 ```python
 from hippoium.core.builder.prompt_builder import PromptBuilder
-from hippoium.core.cer.compressor import Compressor
+from hippoium.engine import DefaultContextEngine
 
-chunks = [
-    "Hello, how can I help you?",
-    "Hello, how can I help you?",  # 重複段落
-    "請介紹一下 Hippoium 的 CER 架構。"
-]
+engine = DefaultContextEngine()
+engine.write_turn("user", "你好，請簡短介紹 Hippoium")
+context = engine.get_context_for_scope("task")
+messages = PromptBuilder().build(context=context, user_query="請用一句話說明用途")
 
-pb = PromptBuilder()
-prompt = pb.build(chunks)
-print(prompt)
+class MockLLM:
+    def complete(self, messages, **_):
+        return "（Mock 回覆）Hippoium 是 LLM 記憶治理層。"
+
+print(MockLLM().complete(messages))
 ```
+
+### API Key 與 Mock 模式
+
+* **有需要實際呼叫模型時**，請使用環境變數設定金鑰，例如 `OPENAI_API_KEY`。
+* **範例程式中的 Mock 客戶端**只用來演示流程，不會觸發任何外部 API，請務必注意。
+
+### 範例程式
+
+* `examples/minimal.py`：使用 Mock LLM/Embedding client 組裝 prompt（不需金鑰）。
+* `examples/openai_live.py`：需要 `OPENAI_API_KEY`，並在 CI 預設不執行。
 
 ---
 
@@ -93,4 +114,3 @@ hippoium/
 ## 📮 聯絡方式
 
 對 Hippoium 有任何疑問或建議，歡迎寄信至 [**dev@hippoium.ai**](mailto\:dev@hippoium.ai)。
-
