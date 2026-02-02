@@ -26,7 +26,7 @@ import enum
 from enum import Enum, auto
 from typing import Literal, List, Dict, Any, Optional
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 
@@ -178,7 +178,7 @@ class Message(BaseModel):
     id: str
     role: str  # user / assistant / system
     content: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     label: MsgLabel | None = None
 
 
@@ -187,7 +187,7 @@ class Artifact(BaseModel):
     type: ArtifactType
     data: Any
     checksum: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RetrievalRequest(BaseModel):
