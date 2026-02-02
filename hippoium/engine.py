@@ -6,14 +6,20 @@ from hippoium.core.memory import stores  # assuming stores.py defines SCache, MB
 from hippoium.core.memory.stores import build_namespaced_key
 from hippoium.ports.domain import MemoryItem
 from hippoium.core.cer.compressor import Compressor
+from hippoium.core.utils.hasher import hash_text
 
 class DefaultContextEngine(ContextEngineProtocol):
     """
     Default implementation of ContextEngineProtocol that manages S/M/L memory tiers
     and handles conversation record input processing.
     """
-    def __init__(self, max_messages:int=50, max_tokens:int=2048,
-                 session_ttl:Optional[timedelta]=timedelta(minutes=30)):
+    def __init__(
+        self,
+        max_messages: int = 50,
+        max_tokens: int = 2048,
+        session_ttl: Optional[timedelta] = timedelta(minutes=30),
+        compression_debug: bool = False,
+    ):
         # S-tier: session cache (stores entire conversation history by session ID)
         self.s_cache = stores.SCache(ttl=session_ttl)
         # M-tier: short-term buffer (recent messages with limits)
@@ -22,6 +28,7 @@ class DefaultContextEngine(ContextEngineProtocol):
         self.l_vector = stores.LVector(capacity=None)
         # Track current session ID for context (could be conversation ID or user ID)
         self.current_session: Optional[str] = None
+        self.compression_debug = compression_debug
 
     def write_turn(self, role:str, content:str, metadata:Optional[dict]=None) -> None:
         """
@@ -143,11 +150,28 @@ class DefaultContextEngine(ContextEngineProtocol):
             history = history[-50:]
 
         texts = [item.content for item in history]
-        compressed_texts = Compressor().compress(texts)
+        compressor = Compressor()
+        compressed_texts = compressor.compress(texts)
         compressed_items: List[MemoryItem] = []
+        method_id = compressor.describe()
         for item, new_text in zip(history, compressed_texts):
+            original_text = item.content
             new_meta = dict(item.metadata or {})
             new_meta["compressed"] = True
+            new_meta["compression"] = {
+                "original_hash": hash_text(original_text),
+                "original_length": len(original_text),
+                "method_id": method_id,
+                "compressed_length": len(new_text),
+            }
+            new_meta["original_content_ref"] = original_text
+            if self.compression_debug:
+                new_meta["compression_debug"] = {
+                    "original_head": original_text[:80],
+                    "original_tail": original_text[-80:],
+                    "compressed_head": new_text[:80],
+                    "compressed_tail": new_text[-80:],
+                }
             compressed_items.append(MemoryItem(content=new_text, metadata=new_meta))
         return compressed_items
 

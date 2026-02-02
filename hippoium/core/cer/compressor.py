@@ -31,6 +31,9 @@ class Compressor:
             return self._keep_head(chunks)
         return self._keep_tail(chunks)
 
+    def describe(self) -> str:
+        return f"dedup:{self.dedup_strategy.name.lower()}+trim:{self.trim_policy.name.lower()}"
+
     # ---------- internal helpers ---------- #
     def _hash_dedupe(self, chunks: List[str]) -> List[str]:
         seen: set[str] = set()
