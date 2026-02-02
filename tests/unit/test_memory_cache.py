@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from hippoium.core.cer.cache import TierCache
-from hippoium.core.memory.stores import ColdStore, LVector, MBuffer, SCache
+from hippoium.core.memory.stores import ColdStore, LVector, MBuffer, SCache, build_namespaced_key
 from hippoium.ports.port_types import MemTier
 
 
@@ -84,6 +84,27 @@ def test_coldstore_basic():
     cold.put("b", "dataB")
     assert cold.get("a") is None
     assert cold.get("b") == "dataB"
+
+
+def test_namespaced_keys_do_not_collide():
+    mb = MBuffer(max_messages=5, max_tokens=100)
+    key_a = build_namespaced_key("session-a", "1")
+    key_b = build_namespaced_key("session-b", "1")
+    mb.put(key_a, "alpha")
+    mb.put(key_b, "bravo")
+    assert mb.get(key_a) == "alpha"
+    assert mb.get(key_b) == "bravo"
+
+
+def test_lvector_similarity_search_top_k():
+    lv = LVector(capacity=None)
+    lv.put_vector("a", [1.0, 0.0], {"id": "a"})
+    lv.put_vector("b", [0.0, 1.0], {"id": "b"})
+    lv.put_vector("c", [0.9, 0.1], {"id": "c"})
+    results = lv.similarity_search([1.0, 0.0], top_k=2)
+    assert len(results) == 2
+    assert results[0][0] == "a"
+    assert results[1][0] == "c"
 
 
 def test_tiercache_integration():
