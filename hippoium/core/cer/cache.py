@@ -24,8 +24,8 @@ class TierCache:
     def get(self, key: str, tier: MemTier):
         return self._map[tier].get(key)
 
-    def put(self, key: str, value, tier: MemTier):
-        self._map[tier].put(key, value)
+    def put(self, key: str, value, tier: MemTier, ttl: int | None = None):
+        self._map[tier].put(key, value, ttl=ttl)
 
     def delete(self, key: str, tier: MemTier):
         self._map[tier].delete(key)
@@ -70,7 +70,7 @@ class _NoopCache(CacheProtocol):
     def get(self, key: str):
         return None
 
-    def put(self, key: str, value: Any):
+    def put(self, key: str, value: Any, ttl: int | None = None):
         pass
 
     def delete(self, key: str):

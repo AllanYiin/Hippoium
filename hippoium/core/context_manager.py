@@ -2,22 +2,8 @@ from contextlib import AbstractContextManager
 from contextvars import ContextVar
 from typing import Optional, List, Any
 
-# We'll reuse MemoryItem, ToolSpec from ports, and hook_registry from core.hooks
-try:
-    from hippoium.ports.mcp import MemoryItem, ToolSpec
-except ImportError:
-    # Fallback definitions if needed
-    class MemoryItem:
-        def __init__(self, content: str, metadata: Optional[dict] = None):
-            self.content = content
-            self.metadata = metadata
-
-    class ToolSpec:
-        def __init__(self, name: str, description: Optional[str] = None):
-            self.name = name
-            self.description = description
-
 from hippoium.core.hooks import hook_registry
+from hippoium.ports.domain import MemoryItem, ToolSpec
 
 # Context variable to track the current context session (for context_api usage)
 current_context_session: ContextVar[Optional["PromptContextSession"]] = ContextVar("current_context_session", default=None)
@@ -59,7 +45,7 @@ class PromptContextSession(AbstractContextManager):
 
     def add_memory(self, content: str, metadata: Optional[dict] = None) -> None:
         """Add a piece of contextual memory (e.g., prior conversation or relevant fact)."""
-        item = MemoryItem(content=content, metadata=metadata)
+        item = MemoryItem(content=content, metadata=metadata or {})
         self.memory_items.append(item)
 
     def add_negative_example(self, content: str) -> None:
