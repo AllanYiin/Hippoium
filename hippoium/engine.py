@@ -3,7 +3,7 @@ from datetime import timedelta
 from typing import Optional, Dict, List, Any
 from hippoium.ports.protocols import ContextEngineProtocol
 from hippoium.core.memory import stores  # assuming stores.py defines SCache, MBuffer, LVector
-from hippoium.ports.mcp import MemoryItem
+from hippoium.ports.domain import MemoryItem
 from hippoium.core.cer.compressor import Compressor
 
 class DefaultContextEngine(ContextEngineProtocol):

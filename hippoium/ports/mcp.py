@@ -1,25 +1,16 @@
 # hippoium/ports/mcp.py
 
-from typing import Optional, Union, Any, Dict, List
+from typing import Optional, Union, Any, Dict
+
 from pydantic import BaseModel
 
-class MemoryItem(BaseModel):
-    """Represents a unit of memory (context) with optional metadata."""
-    content: str
-    metadata: Optional[Dict[str, Any]] = None
+from hippoium.ports.domain import MemoryItem, ToolSpec
 
 class PromptTemplate(BaseModel):
     """Represents a prompt template with optional placeholders."""
     content: str
     name: Optional[str] = None
     description: Optional[str] = None
-
-class ToolSpec(BaseModel):
-    """Represents a tool's specification for use in context or MCP integration."""
-    name: str
-    description: Optional[str] = None
-    # Optionally, define input/output schema for the tool if needed
-    parameters_schema: Optional[Dict[str, Any]] = None
 
 class MCPMessage(BaseModel):
     """
@@ -59,7 +50,7 @@ class MCPMessage(BaseModel):
         """
         return cls(jsonrpc="2.0", id=request_id, method="registerTool",
                    params={"name": tool.name, "description": tool.description,
-                           "parameters": tool.parameters_schema})
+                           "parameters": tool.args_schema})
 
     def to_memory_item(self) -> MemoryItem:
         """
@@ -73,7 +64,7 @@ class MCPMessage(BaseModel):
             data = self.params
         if data is not None:
             content = data.get("content", "")
-            metadata = data.get("metadata")
+            metadata = data.get("metadata") or {}
             return MemoryItem(content=content, metadata=metadata)
         raise ValueError("MCPMessage cannot be converted to MemoryItem")
 
@@ -100,10 +91,10 @@ class MCPMessage(BaseModel):
         if isinstance(self.params, dict) and self.method == "registerTool":
             return ToolSpec(name=self.params.get("name", ""),
                             description=self.params.get("description"),
-                            parameters_schema=self.params.get("parameters"))
+                            args_schema=self.params.get("parameters"))
         if isinstance(self.result, dict) and "name" in self.result:
             # If result contains tool info
             return ToolSpec(name=self.result.get("name", ""),
                             description=self.result.get("description"),
-                            parameters_schema=self.result.get("parameters"))
+                            args_schema=self.result.get("parameters"))
         raise ValueError("MCPMessage cannot be converted to ToolSpec")

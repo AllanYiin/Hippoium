@@ -46,7 +46,7 @@ class SCache(CacheProtocol):
             return None
         return item["value"]
 
-    def put(self, key: str, value: Any) -> None:
+    def put(self, key: str, value: Any, ttl: int | None = None) -> None:
         now = self.clock.now()
         if key in self.data:
             self.data[key]["value"] = value
@@ -110,7 +110,7 @@ class MBuffer(CacheProtocol):
                 _, val = self.data.popitem(last=False)
                 self._token_count -= val["len"]
 
-    def put(self, key: str, value: str) -> None:
+    def put(self, key: str, value: str, ttl: int | None = None) -> None:
         now = self.clock.now()
         new_len = count_tokens(value)
         if self.max_tokens is not None and self.max_tokens > 0 and new_len > self.max_tokens:
@@ -142,7 +142,7 @@ class LVector(CacheProtocol):
     def get(self, key: str) -> Any | None:
         return self.data.get(key)
 
-    def put(self, key: str, value: Any) -> None:
+    def put(self, key: str, value: Any, ttl: int | None = None) -> None:
         if self.capacity is not None and self.capacity > 0 and len(self.data) >= self.capacity:
             self.data.popitem(last=False)
         self.data[key] = value
@@ -164,7 +164,7 @@ class ColdStore(CacheProtocol):
     def get(self, key: str) -> Any | None:
         return self.data.get(key)
 
-    def put(self, key: str, value: Any) -> None:
+    def put(self, key: str, value: Any, ttl: int | None = None) -> None:
         if self.capacity is not None and self.capacity > 0 and len(self.data) >= self.capacity:
             self.data.popitem(last=False)
         self.data[key] = value

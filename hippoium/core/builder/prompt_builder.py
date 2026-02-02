@@ -3,7 +3,7 @@ PromptBuilder – assemble trimmed chunks into final prompt.
 """
 from __future__ import annotations
 from typing import List, Optional
-from hippoium.ports.mcp import MemoryItem, ToolSpec
+from hippoium.ports.domain import MemoryItem, ToolSpec
 from hippoium.core.builder.template_registry import TemplateRegistry
 
 

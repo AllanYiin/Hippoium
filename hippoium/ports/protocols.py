@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Sequence, Protocol, runtime_checkable
-from .port_types import Message, Artifact
-from hippoium.ports.port_types import ContextRecord
+from typing import Any, Iterable, List, Protocol, Sequence, runtime_checkable
 
-from abc import ABC, abstractmethod
-from typing import List
-from hippoium.ports.port_types import *
+from hippoium.ports.domain import Message, RetrievalResult
+from hippoium.ports.port_types import Artifact, ContextRecord, ContextBundle, ContextQuery, Score, TokenCount
 
 
 class ContextEngineProtocol(ABC):
@@ -27,6 +24,17 @@ class ContextEngineProtocol(ABC):
     @abstractmethod
     def dump_memory(self) -> List[dict]:
         ...
+
+
+@runtime_checkable
+class LLMClient(Protocol):
+    def complete(self, messages: Sequence[Message], **opts: Any) -> str | Message: ...
+
+
+@runtime_checkable
+class EmbeddingClient(Protocol):
+    def embed(self, texts: Iterable[str], **opts: Any) -> List[List[float]]: ...
+
 
 @runtime_checkable
 class Storage(Protocol):
@@ -51,7 +59,7 @@ class CacheProtocol(Protocol):
         """Return cached value or ``None`` if absent/expired."""
 
     @abstractmethod
-    def put(self, key: str, value: Any) -> None:
+    def put(self, key: str, value: Any, ttl: int | None = None) -> None:
         """Store value into cache, applying eviction if necessary."""
 
     @abstractmethod
@@ -83,3 +91,13 @@ class RetrieverPort(ABC):
 class ScorerPort(ABC):
     @abstractmethod
     def score(self, query: str, docs: Sequence[Message]) -> List[Score]: ...
+
+
+@runtime_checkable
+class Cache(CacheProtocol, Protocol):
+    """Cache protocol alias with optional TTL support."""
+
+
+@runtime_checkable
+class Retriever(Protocol):
+    def retrieve(self, query: str, **opts: Any) -> List[RetrievalResult]: ...
