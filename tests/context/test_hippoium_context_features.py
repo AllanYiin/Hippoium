@@ -103,6 +103,10 @@ def test_context_compression_dedup_and_diff():
     assert len(ctx) == 2
     assert ctx[1].metadata.get("compressed") is True
     assert ctx[1].content.startswith("---")
+    compression = ctx[1].metadata.get("compression")
+    assert compression is not None
+    assert compression["original_hash"]
+    assert compression["original_length"] > 0
 
 
 def test_negative_vault_management():
@@ -167,4 +171,6 @@ def test_prompt_builder_negative_and_tools_slots():
     )
     system_text = "\n".join(m["content"] for m in messages if m["role"] == "system")
     assert "No NSFW." in system_text
-    assert "search: web search" in system_text
+    assert "NEGATIVE_EXAMPLES:" in system_text
+    assert "TOOLS_DATA:" in system_text
+    assert "search" in system_text
