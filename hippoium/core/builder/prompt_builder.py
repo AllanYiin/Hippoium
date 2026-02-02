@@ -20,7 +20,7 @@ class PromptBuilder:
     def build(
         self,
         template_id: Optional[str] = None,
-        context: List[MemoryItem] = [],
+        context: Optional[List[MemoryItem]] = None,
         user_query: str = "",
         negative_examples: Optional[List[str]] = None,
         tools: Optional[List[ToolSpec]] = None,
@@ -29,6 +29,7 @@ class PromptBuilder:
         Returns a list of {"role": ..., "content": ...} messages suitable for Chat API.
         """
         messages: List[dict] = []
+        context = list(context or [])
         negative_examples = negative_examples or []
         tools = tools or []
 

@@ -1,13 +1,24 @@
-import time
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from hippoium.core.cer.cache import TierCache
 from hippoium.core.memory.stores import ColdStore, LVector, MBuffer, SCache
 from hippoium.ports.port_types import MemTier
 
 
+class FakeClock:
+    def __init__(self, now: datetime):
+        self._now = now
+
+    def now(self) -> datetime:
+        return self._now
+
+    def advance(self, delta: timedelta) -> None:
+        self._now += delta
+
+
 def test_scache_basic_ttl_and_capacity():
-    sc = SCache(capacity=2, ttl=timedelta(seconds=1))
+    clock = FakeClock(datetime.now(timezone.utc))
+    sc = SCache(capacity=2, ttl=timedelta(seconds=1), clock=clock)
     sc.put("user", "Alice")
     sc.put("lang", "Python")
     assert sc.get("user") == "Alice"
@@ -16,13 +27,14 @@ def test_scache_basic_ttl_and_capacity():
     assert sc.get("user") is None
     assert sc.get("lang") == "Python"
     assert sc.get("level") == "beginner"
-    time.sleep(1.1)
+    clock.advance(timedelta(seconds=2))
     assert sc.get("lang") is None
     assert sc.get("level") is None
 
 
 def test_mbuffer_eviction_by_count_and_tokens():
-    mb = MBuffer(max_messages=3, max_tokens=5)
+    clock = FakeClock(datetime.now(timezone.utc))
+    mb = MBuffer(max_messages=3, max_tokens=6, clock=clock)
     mb.put("m1", "Hello")
     mb.put("m2", "world")
     mb.put("m3", "!")
@@ -37,11 +49,23 @@ def test_mbuffer_eviction_by_count_and_tokens():
 
 
 def test_mbuffer_ttl_expiry():
-    mb = MBuffer(max_messages=5, max_tokens=100, ttl=timedelta(seconds=1))
+    clock = FakeClock(datetime.now(timezone.utc))
+    mb = MBuffer(max_messages=5, max_tokens=100, ttl=timedelta(seconds=1), clock=clock)
     mb.put("x", "test")
     assert mb.get("x") == "test"
-    time.sleep(1.1)
+    clock.advance(timedelta(seconds=2))
     assert mb.get("x") is None
+
+
+def test_mbuffer_oversize_rejected():
+    clock = FakeClock(datetime.now(timezone.utc))
+    mb = MBuffer(max_messages=5, max_tokens=2, clock=clock)
+    try:
+        mb.put("x", "one two three")
+    except ValueError as exc:
+        assert "exceeds max_tokens" in str(exc)
+    else:
+        raise AssertionError("Expected oversize message to raise ValueError")
 
 
 def test_lvector_basic_and_capacity():
