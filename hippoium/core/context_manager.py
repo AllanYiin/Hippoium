@@ -3,6 +3,11 @@ from contextvars import ContextVar
 from typing import Optional, List, Any
 
 from hippoium.core.hooks import hook_registry
+from hippoium.core.builder.formatters import (
+    format_context_items,
+    format_negative_examples,
+    format_user_query,
+)
 from hippoium.ports.domain import MemoryItem, ToolSpec
 
 # Context variable to track the current context session (for context_api usage)
@@ -77,13 +82,15 @@ class PromptContextSession(AbstractContextManager):
         # Construct the final prompt string
         parts: List[str] = []
         if self.negative_examples:
-            # Include negative examples as preamble lines/instructions
-            parts.extend(self.negative_examples)
+            neg_block = format_negative_examples(self.negative_examples)
+            if neg_block:
+                parts.append(neg_block)
         if self.memory_items:
-            # Include memory content (each memory item's content in context)
-            parts.extend([m.content for m in self.memory_items])
+            ctx_block = format_context_items(self.memory_items)
+            if ctx_block:
+                parts.append(ctx_block)
         # Finally, append the original prompt
-        parts.append(prompt)
+        parts.append(format_user_query(prompt))
         enhanced_prompt = "\n".join(parts)
         # Record this prompt in history
         self.history_prompts.append(prompt)
