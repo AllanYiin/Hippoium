@@ -44,9 +44,9 @@ pip install hippoium
 
 ---
 
-## 🚀 快速上手
+## 🚀 快速上手（20 行內）
 
-> **提醒**：以下範例使用 Mock 客戶端，不會呼叫任何真實 LLM（請在每次對話都記得這是 Mock 模式）。
+> **提醒**：以下為 Mock 模式，不會呼叫真實 LLM；請在每次對話都記得這是 Mock 模式。
 
 ```python
 from hippoium.core.builder.prompt_builder import PromptBuilder
@@ -55,19 +55,21 @@ from hippoium.engine import DefaultContextEngine
 engine = DefaultContextEngine()
 engine.write_turn("user", "你好，請簡短介紹 Hippoium")
 context = engine.get_context_for_scope("task")
-messages = PromptBuilder().build(context=context, user_query="請用一句話說明用途")
+messages = PromptBuilder().build(
+    context=context, user_query="請用一句話說明用途。"
+)
 
 class MockLLM:
     def complete(self, messages, **_):
-        return "（Mock 回覆）Hippoium 是 LLM 記憶治理層。"
+        return "（Mock 回覆）Hippoium 是 LLM 記憶治理層。提醒：這是 Mock 模式。"
 
 print(MockLLM().complete(messages))
 ```
 
 ### API Key 與 Mock 模式
 
-* **有需要實際呼叫模型時**，請使用環境變數設定金鑰，例如 `OPENAI_API_KEY`。
-* **範例程式中的 Mock 客戶端**只用來演示流程，不會觸發任何外部 API，請務必注意。
+* **需要實際呼叫模型時**，請用環境變數設定金鑰（例如 `OPENAI_API_KEY`）。
+* **Mock 客戶端**僅示範流程，不會觸發外部 API，請務必在每次對話提醒自己這是 Mock 模式。
 
 ### 範例程式
 
