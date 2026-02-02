@@ -3,6 +3,7 @@ from datetime import timedelta
 from typing import Optional, Dict, List, Any
 from hippoium.ports.protocols import ContextEngineProtocol
 from hippoium.core.memory import stores  # assuming stores.py defines SCache, MBuffer, LVector
+from hippoium.core.memory.stores import build_namespaced_key
 from hippoium.ports.domain import MemoryItem
 from hippoium.core.cer.compressor import Compressor
 
@@ -45,14 +46,14 @@ class DefaultContextEngine(ContextEngineProtocol):
         self.s_cache.put(session_id, history)
 
         # Store in short-term buffer (M-tier) for immediate context (as plain text)
-        # Use an incrementing key or timestamp to preserve order
-        key = f"{session_id}-{len(history)}"
+        # Use a namespaced key to preserve order without collisions
+        key = build_namespaced_key(session_id, str(len(history)))
         self.m_buffer.put(key, content)  # MBuffer will evict old entries if over capacity
 
         # (Optional) Store in long-term vector (L-tier) for archival or retrieval.
         # For example, store user messages under a user-specific key for long-term memory.
         if 'user_id' in metadata:
-            user_key = f"user:{metadata['user_id']}"
+            user_key = build_namespaced_key("user", str(metadata["user_id"]))
             self.l_vector.put(user_key, mem_item)
         # Could also store all turns in LVector if long-term archival is desired:
         # self.l_vector.put(f"turn:{session_id}-{len(history)}", mem_item)
@@ -81,7 +82,7 @@ class DefaultContextEngine(ContextEngineProtocol):
         elif scope == "user":
             # For user scope, retrieve long-term memory by user ID (key is user id)
             if key:
-                user_items = self.l_vector.get(f"user:{key}")
+                user_items = self.l_vector.get(build_namespaced_key("user", str(key)))
                 if user_items:
                     # If stored as a single MemoryItem or list, normalize to list
                     result = user_items if isinstance(user_items, list) else [user_items]
@@ -91,7 +92,8 @@ class DefaultContextEngine(ContextEngineProtocol):
             result = []
         else:
             # default: return recent short-term context from MBuffer (last N messages)
-            result_texts: List[str] = [entry["value"] for entry in self.m_buffer.data.values()]
+            with self.m_buffer._lock:
+                result_texts: List[str] = [entry["value"] for entry in self.m_buffer.data.values()]
             # Convert to MemoryItem list (with unknown roles, assume user/assistant alternation if needed)
             result = [MemoryItem(content=txt, metadata={}) for txt in result_texts]
 
@@ -103,7 +105,9 @@ class DefaultContextEngine(ContextEngineProtocol):
         Returns a list of dicts for each session in SCache with their messages.
         """
         all_sessions = []
-        for sess_id, history in list(self.s_cache.data.items()):
+        with self.s_cache._lock:
+            sessions = list(self.s_cache.data.items())
+        for sess_id, history in sessions:
             # Each history entry is MemoryItem; convert to dict for clarity
             sess_dump = {
                 "session_id": sess_id,

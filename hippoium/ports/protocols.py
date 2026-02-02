@@ -101,3 +101,12 @@ class Cache(CacheProtocol, Protocol):
 @runtime_checkable
 class Retriever(Protocol):
     def retrieve(self, query: str, **opts: Any) -> List[RetrievalResult]: ...
+
+
+@runtime_checkable
+class VectorIndex(Protocol):
+    """Minimal vector index interface for similarity search backends."""
+
+    def add(self, key: str, vector: Sequence[float], payload: Any) -> None: ...
+
+    def similarity_search(self, query_vector: Sequence[float], top_k: int = 5) -> List[tuple[str, Any, float]]: ...
