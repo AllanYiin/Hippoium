@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 hippoium/tests/test_universal_chunker.py
 ────────────────────────────────────────
