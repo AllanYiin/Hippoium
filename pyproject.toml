@@ -44,3 +44,22 @@ include = ["core*", "ports*", "adapters*"]
 [project.urls]
 "Source" = "https://github.com/allanyiin/hippoium"
 "Tracker" = "https://github.com/allanyiin/hippoium/issues"
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+include = '\.pyi?$'
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N806", "S101"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
