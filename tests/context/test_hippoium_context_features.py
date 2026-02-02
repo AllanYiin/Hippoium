@@ -102,6 +102,8 @@ def test_context_compression_dedup_and_diff():
     ctx = engine.get_context_for_scope("task", key="chat3")
     assert len(ctx) == 2
     assert ctx[1].metadata.get("compressed") is True
+    assert "compression_ref" in ctx[1].metadata
+    assert ctx[1].metadata["compression_ref"]["sha256"]
     assert ctx[1].content.startswith("---")
 
 
@@ -167,4 +169,4 @@ def test_prompt_builder_negative_and_tools_slots():
     )
     system_text = "\n".join(m["content"] for m in messages if m["role"] == "system")
     assert "No NSFW." in system_text
-    assert "search: web search" in system_text
+    assert "TOOLS_DATA" in system_text
