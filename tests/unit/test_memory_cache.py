@@ -2,7 +2,7 @@ import time
 from datetime import timedelta
 
 from hippoium.core.cer.cache import TierCache
-from hippoium.core.memory.stores import SCache, MBuffer, LVector, ColdStore
+from hippoium.core.memory.stores import ColdStore, LVector, MBuffer, SCache
 from hippoium.ports.port_types import MemTier
 
 
@@ -65,9 +65,14 @@ def test_coldstore_basic():
 def test_tiercache_integration():
     cfg = {
         "SCache": {"enabled": True, "capacity": 2, "ttl": timedelta(seconds=5)},
-        "MBuffer": {"enabled": True, "max_messages": 2, "max_tokens": 10, "ttl": timedelta(minutes=5)},
+        "MBuffer": {
+            "enabled": True,
+            "max_messages": 2,
+            "max_tokens": 10,
+            "ttl": timedelta(minutes=5),
+        },
         "LVector": {"enabled": False},
-        "ColdStore": {"enabled": True}
+        "ColdStore": {"enabled": True},
     }
     tc = TierCache.from_config(cfg)
     tc.put("temp", "123", MemTier.S)

@@ -1,20 +1,18 @@
 # tests/integration/test_openai_cer.py
 import os
 import types
+
 import pytest
+
+from hippoium.factories import create_cer
+from hippoium.adapters.openai import OpenAIAdapter
+from hippoium.ports.events import Event
+from hippoium.core.hooks import hook_registry
 
 # --------------- 測試前置：檢查 openai 套件與 API key ----------------
 openai = pytest.importorskip("openai")  # 若未安裝 openai -> skip
 API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY".lower())
 pytest.skip("環境未設定 OPENAI_API_KEY", allow_module_level=True) if not API_KEY else None
-
-
-# --------------- Hippoium 相關 import --------------------------------
-from hippoium.factories import create_cer
-from hippoium.adapters.openai import OpenAIAdapter
-from hippoium.ports.events import Event
-from hippoium.core.hooks import hook_registry
-from hippoium.ports.port_types import ContextRecord
 # --------------------- 測試案例 --------------------------------------
 
 def test_openai_cer_full_pipeline(monkeypatch):
