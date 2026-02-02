@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from hippoium.core.utils.time import utc_now
 
 @dataclass
 class Message:
@@ -20,7 +21,7 @@ class Message:
 class MemoryItem:
     content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
-    ts: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    ts: datetime = field(default_factory=utc_now)
 
     def __post_init__(self) -> None:
         if self.metadata is None:

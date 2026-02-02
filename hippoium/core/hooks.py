@@ -1,8 +1,9 @@
 # hippoium/core/hooks.py
 
-import inspect
 import asyncio
-from typing import Callable, Dict, List, Any, Optional
+import inspect
+import logging
+from typing import Any, Callable, Dict, List, Optional
 
 class HookRegistry:
     """
@@ -13,12 +14,24 @@ class HookRegistry:
         # Mapping from event name to list of callbacks
         self._hooks: Dict[str, List[Callable[..., Any]]] = {}
 
-    def register(self, event: str, callback: Callable[..., Any]) -> None:
-        """Register a callback for a given event."""
+    def register(
+        self,
+        event: str,
+        callback: Optional[Callable[..., Any]] = None,
+    ) -> Callable[..., Any]:
+        """Register a callback for a given event, optionally as a decorator."""
+        if callback is None:
+            def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+                self.register(event, func)
+                return func
+
+            return decorator
+
         if event not in self._hooks:
             self._hooks[event] = []
         if callback not in self._hooks[event]:
             self._hooks[event].append(callback)
+        return callback
 
     def unregister(self, event: str, callback: Callable[..., Any]) -> None:
         """Unregister a previously registered callback from an event."""
@@ -40,11 +53,16 @@ class HookRegistry:
         if event not in self._hooks:
             return
         async_tasks: List[Any] = []
+        logger = logging.getLogger(__name__)
         for callback in list(self._hooks[event]):
             try:
                 result = callback(*args, **kwargs)
             except Exception:
-                # If a hook raises an exception, we continue to the next (you may log the error here)
+                logger.exception(
+                    "Hook callback failed for event %s: %s",
+                    event,
+                    getattr(callback, "__name__", repr(callback)),
+                )
                 continue
             if inspect.isawaitable(result):
                 async_tasks.append(result)
@@ -68,12 +86,20 @@ class HookRegistry:
         """
         if event not in self._hooks:
             return
+        logger = logging.getLogger(__name__)
         tasks: List[Any] = []
         for callback in list(self._hooks[event]):
             if inspect.iscoroutinefunction(callback):
                 tasks.append(callback(*args, **kwargs))
             else:
-                callback(*args, **kwargs)
+                try:
+                    callback(*args, **kwargs)
+                except Exception:
+                    logger.exception(
+                        "Hook callback failed for event %s: %s",
+                        event,
+                        getattr(callback, "__name__", repr(callback)),
+                    )
         if tasks:
             await asyncio.gather(*tasks)
 
