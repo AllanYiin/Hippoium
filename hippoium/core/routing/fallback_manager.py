@@ -3,13 +3,14 @@ FallbackManager – retries with alternative provider on failure.
 """
 from __future__ import annotations
 import logging
-from hippoium.adapters.base import BaseAdapter
+
+from hippoium.ports.protocols import LLMClient
 
 logger = logging.getLogger("hippoium.fallback")
 
 
 class FallbackManager:
-    def __init__(self, primary: BaseAdapter, secondary: BaseAdapter):
+    def __init__(self, primary: LLMClient, secondary: LLMClient):
         self.primary = primary
         self.secondary = secondary
 
