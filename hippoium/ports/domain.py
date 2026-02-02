@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
@@ -20,7 +20,7 @@ class Message:
 class MemoryItem:
     content: str
     metadata: Dict[str, Any] = field(default_factory=dict)
-    ts: datetime = field(default_factory=datetime.utcnow)
+    ts: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self) -> None:
         if self.metadata is None:
