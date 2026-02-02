@@ -1,13 +1,21 @@
 from __future__ import annotations
-import datetime
 """In-memory cache implementations for S/M/L tiers and ColdStore."""
 
 from collections import OrderedDict
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Protocol
 from hippoium.ports.port_types import MemTier
 from hippoium.ports.protocols import CacheProtocol
 from hippoium.core.utils.token_counter import count_tokens
+
+
+class Clock(Protocol):
+    def now(self) -> datetime: ...
+
+
+class RealClock:
+    def now(self) -> datetime:
+        return datetime.now(timezone.utc)
 
 
 class SCache(CacheProtocol):
@@ -15,13 +23,19 @@ class SCache(CacheProtocol):
 
     tier = MemTier.S
 
-    def __init__(self, capacity: int | None = None, ttl: timedelta | None = timedelta(minutes=30)):
+    def __init__(
+        self,
+        capacity: int | None = None,
+        ttl: timedelta | None = timedelta(minutes=30),
+        clock: "Clock | None" = None,
+    ):
         self.capacity = capacity
         self.ttl = ttl
+        self.clock = clock or RealClock()
         self.data: OrderedDict[str, dict] = OrderedDict()
 
     def _expired(self, ts: datetime) -> bool:
-        return bool(self.ttl and ts + self.ttl < datetime.utcnow())
+        return bool(self.ttl and ts + self.ttl < self.clock.now())
 
     def get(self, key: str) -> Any | None:
         item = self.data.get(key)
@@ -33,7 +47,7 @@ class SCache(CacheProtocol):
         return item["value"]
 
     def put(self, key: str, value: Any) -> None:
-        now = datetime.utcnow()
+        now = self.clock.now()
         if key in self.data:
             self.data[key]["value"] = value
             self.data[key]["ts"] = now
@@ -48,20 +62,31 @@ class SCache(CacheProtocol):
 
 
 class MBuffer(CacheProtocol):
-    """Short-term buffer with message count and token limits."""
+    """Short-term buffer with message count and token limits.
+
+    Oversize policy:
+        If a single message exceeds ``max_tokens``, the put is rejected with a
+        ``ValueError`` so callers can handle the oversize payload explicitly.
+    """
 
     tier = MemTier.M
 
-    def __init__(self, max_messages: int | None = None, max_tokens: int | None = None,
-                 ttl: timedelta | None = timedelta(minutes=30)):
+    def __init__(
+        self,
+        max_messages: int | None = None,
+        max_tokens: int | None = None,
+        ttl: timedelta | None = timedelta(minutes=30),
+        clock: "Clock | None" = None,
+    ):
         self.max_messages = max_messages
         self.max_tokens = max_tokens
         self.ttl = ttl
+        self.clock = clock or RealClock()
         self.data: OrderedDict[str, dict] = OrderedDict()
         self._token_count: int = 0
 
     def _expired(self, ts: datetime) -> bool:
-        return bool(self.ttl and ts + self.ttl < datetime.utcnow())
+        return bool(self.ttl and ts + self.ttl < self.clock.now())
 
     def get(self, key: str) -> Any | None:
         item = self.data.get(key)
@@ -86,8 +111,10 @@ class MBuffer(CacheProtocol):
                 self._token_count -= val["len"]
 
     def put(self, key: str, value: str) -> None:
-        now = datetime.utcnow()
+        now = self.clock.now()
         new_len = count_tokens(value)
+        if self.max_tokens is not None and self.max_tokens > 0 and new_len > self.max_tokens:
+            raise ValueError("Message token count exceeds max_tokens limit")
         if key in self.data:
             old = self.data[key]
             self._token_count -= old["len"]
