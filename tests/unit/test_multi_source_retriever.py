@@ -10,7 +10,6 @@ from hippoium.core.retriever import (
     MultiSourceRetriever,
 )
 
-
 # prepare fixtures
 FILE_PATH = "example.txt"
 FILE_CONTENT = "Python is a programming language. It is widely used in AI and ML."

@@ -1,22 +1,27 @@
 # tests/test_convert_a2a.py
 
 import types
-import json
 
 from hippoium.utils.convert_a2a import A2AConverter
 from hippoium.utils.converter_registry import ConverterRegistry
 
+
 def create_dummy_memory(content="Memory content for A2A", key="memA2A"):
-    return types.SimpleNamespace(content=content, key=key, name="MemoryItem")  # include name for artifact
+    return types.SimpleNamespace(
+        content=content, key=key, name="MemoryItem"
+    )  # include name for artifact
+
 
 def create_dummy_prompt(name="A2APrompt", content="System instruction."):
     return types.SimpleNamespace(name=name, content=content)
 
+
 def create_dummy_tool(name="a2a_tool"):
-    params = {
-        "x": {"type": "number", "description": "X value"}
-    }
-    return types.SimpleNamespace(name=name, description="Tool for A2A test", parameters=params)
+    params = {"x": {"type": "number", "description": "X value"}}
+    return types.SimpleNamespace(
+        name=name, description="Tool for A2A test", parameters=params
+    )
+
 
 def test_a2a_conversion_roundtrip():
     converter = A2AConverter()
@@ -31,7 +36,9 @@ def test_a2a_conversion_roundtrip():
 
     # Check structure of converted data
     assert "artifactId" in mem_data and mem_data["parts"][0].get("text") == mem.content
-    assert prompt_msg.get("role") == "system" and isinstance(prompt_msg.get("parts"), list)
+    assert prompt_msg.get("role") == "system" and isinstance(
+        prompt_msg.get("parts"), list
+    )
     assert tool_cap["name"] == tool.name and "parameters" in tool_cap
 
     # Parse back to internal objects
@@ -52,8 +59,8 @@ def test_registry_integration_a2a():
         "auto_detect_format": True,
         "converters": {
             "mcp": "utils.convert_mcp.MCPConverter",
-            "a2a": "utils.convert_a2a.A2AConverter"
-        }
+            "a2a": "utils.convert_a2a.A2AConverter",
+        },
     }
     registry = ConverterRegistry(config)
     mem = create_dummy_memory(content="A2A mem content", key="memY")
@@ -68,14 +75,18 @@ def test_registry_integration_a2a():
     a2a_context = {
         "capabilities": [tool_cap],
         "artifacts": [mem_data],
-        "history": [prompt_msg]
+        "history": [prompt_msg],
     }
     # Auto-detect format and parse context
     fmt = registry.detect_format(a2a_context)
     assert fmt == "a2a"
     parsed = registry.parse_context(a2a_context)
     # Verify parsed content
-    assert "tool_specs" in parsed and "memory_items" in parsed and "prompt_templates" in parsed
+    assert (
+        "tool_specs" in parsed
+        and "memory_items" in parsed
+        and "prompt_templates" in parsed
+    )
     mem_back = parsed["memory_items"][0]
     prompt_back = parsed["prompt_templates"][0]
     tool_back = parsed["tool_specs"][0]

@@ -1,19 +1,35 @@
-import pytest
 from datetime import timedelta
-from hippoium.engine import DefaultContextEngine, _common_overlap
-from hippoium.core.neg_vault import NegativeVault
+
 from hippoium.core.builder.prompt_builder import PromptBuilder
+from hippoium.core.neg_vault import NegativeVault
+from hippoium.engine import DefaultContextEngine, _common_overlap
 from hippoium.ports.mcp import MemoryItem, ToolSpec
 
 
 def test_conversation_input_and_memory_management():
     # 建立引擎，設定最大訊息數、最大 token 數、session 存活時間
-    engine = DefaultContextEngine(max_messages=3, max_tokens=100, session_ttl=timedelta(minutes=5))
+    engine = DefaultContextEngine(
+        max_messages=3, max_tokens=100, session_ttl=timedelta(minutes=5)
+    )
     # 寫入使用者與助理的對話輪次
-    engine.write_turn(role="user", content="Hello", metadata={"conv_id": "chat1", "user_id": "alice"})
-    engine.write_turn(role="assistant", content="Hi, how can I help you?", metadata={"conv_id": "chat1"})
-    engine.write_turn(role="user", content="I need assistance with my account.", metadata={"conv_id": "chat1", "user_id": "alice"})
-    engine.write_turn(role="assistant", content="Sure, I can help with your account.", metadata={"conv_id": "chat1"})
+    engine.write_turn(
+        role="user", content="Hello", metadata={"conv_id": "chat1", "user_id": "alice"}
+    )
+    engine.write_turn(
+        role="assistant",
+        content="Hi, how can I help you?",
+        metadata={"conv_id": "chat1"},
+    )
+    engine.write_turn(
+        role="user",
+        content="I need assistance with my account.",
+        metadata={"conv_id": "chat1", "user_id": "alice"},
+    )
+    engine.write_turn(
+        role="assistant",
+        content="Sure, I can help with your account.",
+        metadata={"conv_id": "chat1"},
+    )
 
     # 檢查短期記憶（MBuffer）：不應包含 "Hello"
     m_vals = list(engine.m_buffer.data.values())
@@ -36,12 +52,26 @@ def test_automatic_annotation_and_filtering():
     # 測試自動標註與過濾功能
     engine = DefaultContextEngine()
     # 新增一則應標記為警告的訊息（助理拒絕）
-    engine.write_turn(role="assistant", content="I'm sorry, I cannot do that request.", metadata={"conv_id": "chat2"})
+    engine.write_turn(
+        role="assistant",
+        content="I'm sorry, I cannot do that request.",
+        metadata={"conv_id": "chat2"},
+    )
     # 新增一則應標記為錯誤的訊息（包含 'Error'）
-    engine.write_turn(role="assistant", content="Error: Invalid input provided.", metadata={"conv_id": "chat2"})
-    engine.write_turn(role="assistant", content="Here is the information you requested.", metadata={"conv_id": "chat2"})
+    engine.write_turn(
+        role="assistant",
+        content="Error: Invalid input provided.",
+        metadata={"conv_id": "chat2"},
+    )
+    engine.write_turn(
+        role="assistant",
+        content="Here is the information you requested.",
+        metadata={"conv_id": "chat2"},
+    )
     # 取得排除錯誤訊息的上下文
-    ctx = engine.get_context_for_scope(scope="task", key="chat2", filters={"exclude_err": True})
+    ctx = engine.get_context_for_scope(
+        scope="task", key="chat2", filters={"exclude_err": True}
+    )
     contents = [item.content for item in ctx]
     # 檢查錯誤訊息已被過濾
     assert any("the information you requested" in txt for txt in contents)
@@ -82,7 +112,9 @@ def test_negative_vault_management():
     # 新增範例並驗證列表
     NegativeVault.add_example("Do not reveal confidential information.")
     NegativeVault.add_example("Avoid producing disallowed content.")
-    NegativeVault.add_example("Do not reveal confidential information.")  # 重複，應被忽略
+    NegativeVault.add_example(
+        "Do not reveal confidential information."
+    )  # 重複，應被忽略
     vault_list = NegativeVault.list_examples()
     assert len(vault_list) == 2
     assert "confidential information" in vault_list[0]
@@ -94,8 +126,13 @@ def test_negative_vault_management():
 
 def test_prompt_builder_outputs():
     # 測試提示生成器輸出
-    mem1 = MemoryItem(content="User asked for help with billing.", metadata={"role": "user"})
-    mem2 = MemoryItem(content="Assistant provided billing information.", metadata={"role": "assistant"})
+    mem1 = MemoryItem(
+        content="User asked for help with billing.", metadata={"role": "user"}
+    )
+    mem2 = MemoryItem(
+        content="Assistant provided billing information.",
+        metadata={"role": "assistant"},
+    )
     context = [mem1, mem2]
     user_query = "I have another question about my account."
     builder = PromptBuilder()
@@ -116,7 +153,10 @@ def test_prompt_builder_negative_and_tools_slots():
     )
     builder.registry.register_template("neg_tools", template)
     negs = ["No NSFW.", "Avoid bias."]
-    tools = [ToolSpec(name="search", description="web search"), ToolSpec(name="calc", description="calculator")]
+    tools = [
+        ToolSpec(name="search", description="web search"),
+        ToolSpec(name="calc", description="calculator"),
+    ]
     mem = MemoryItem(content="previous", metadata={"role": "user"})
     messages = builder.build(
         template_id="neg_tools",
@@ -128,4 +168,3 @@ def test_prompt_builder_negative_and_tools_slots():
     system_text = "\n".join(m["content"] for m in messages if m["role"] == "system")
     assert "No NSFW." in system_text
     assert "search: web search" in system_text
-
