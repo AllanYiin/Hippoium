@@ -1,5 +1,5 @@
 import hashlib
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def hash_text(text: str) -> str:

@@ -18,6 +18,8 @@ def test_token_budget_trims_context_first():
         token_budget=40,
     )
     assert payload.trimmed["context"] >= 1
-    system_text = "\n".join(m["content"] for m in payload.messages if m["role"] == "system")
+    system_text = "\n".join(
+        m["content"] for m in payload.messages if m["role"] == "system"
+    )
     assert "alpha beta gamma" not in system_text
     assert "eta theta iota" in system_text

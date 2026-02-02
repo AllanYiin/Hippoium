@@ -2,8 +2,8 @@
 PromptBuilder – assemble trimmed chunks into final prompt.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Optional
 
 from hippoium.core.builder.formatters import (
     format_context_items,
@@ -12,21 +12,24 @@ from hippoium.core.builder.formatters import (
     format_user_query,
     serialize_tools,
 )
+from hippoium.core.builder.template_registry import TemplateRegistry
 from hippoium.core.utils.token_counter import count_tokens
 from hippoium.ports.domain import MemoryItem, ToolSpec
-from hippoium.core.builder.template_registry import TemplateRegistry
 
 
 @dataclass
 class PromptPayload:
-    messages: List[dict]
-    tools: List[dict]
+    messages: list[dict]
+    tools: list[dict]
     token_count: int
     trimmed: dict
 
 
 class PromptBuilder:
-    """Builds the final prompt (as chat message list) by injecting context and user query into a template."""
+    """
+    Builds the final prompt (as chat message list) by injecting context and user query
+    into a template.
+    """
     def __init__(self, template_path: str = ""):
         self.registry = TemplateRegistry()
         if template_path:
@@ -37,13 +40,13 @@ class PromptBuilder:
 
     def build(
         self,
-        template_id: Optional[str] = None,
-        context: Optional[List[MemoryItem]] = None,
+        template_id: str | None = None,
+        context: list[MemoryItem] | None = None,
         user_query: str = "",
-        negative_examples: Optional[List[str]] = None,
-        tools: Optional[List[ToolSpec]] = None,
-        token_budget: Optional[int] = None,
-    ) -> List[dict]:
+        negative_examples: list[str] | None = None,
+        tools: list[ToolSpec] | None = None,
+        token_budget: int | None = None,
+    ) -> list[dict]:
         """
         Returns a list of {"role": ..., "content": ...} messages suitable for Chat API.
         """
@@ -59,14 +62,14 @@ class PromptBuilder:
 
     def build_payload(
         self,
-        template_id: Optional[str] = None,
-        context: Optional[List[MemoryItem]] = None,
+        template_id: str | None = None,
+        context: list[MemoryItem] | None = None,
         user_query: str = "",
-        negative_examples: Optional[List[str]] = None,
-        tools: Optional[List[ToolSpec]] = None,
-        token_budget: Optional[int] = None,
+        negative_examples: list[str] | None = None,
+        tools: list[ToolSpec] | None = None,
+        token_budget: int | None = None,
     ) -> PromptPayload:
-        messages: List[dict] = []
+        messages: list[dict] = []
         context = list(context or [])
         negative_examples = list(negative_examples or [])
         tools = list(tools or [])
@@ -117,11 +120,11 @@ class PromptBuilder:
     def _build_from_template(
         self,
         template_id: str,
-        context: List[MemoryItem],
+        context: list[MemoryItem],
         user_query: str,
-        negative_examples: List[str],
-        tools: List[ToolSpec],
-    ) -> List[dict]:
+        negative_examples: list[str],
+        tools: list[ToolSpec],
+    ) -> list[dict]:
         template = self.registry.get_template(template_id)
         if not template:
             return []
@@ -149,7 +152,7 @@ class PromptBuilder:
 
         # strict role parsing (trusted template only)
         known_roles = ("user", "assistant", "system")
-        messages: List[dict] = []
+        messages: list[dict] = []
         for line in lines:
             if ":" in line:
                 role_candidate, content = line.split(":", 1)
@@ -165,13 +168,13 @@ class PromptBuilder:
     def _apply_token_budget(
         self,
         template_id: str,
-        messages: List[dict],
-        context: List[MemoryItem],
+        messages: list[dict],
+        context: list[MemoryItem],
         user_query: str,
-        negative_examples: List[str],
-        tools: List[ToolSpec],
-        token_budget: Optional[int],
-    ) -> tuple[List[dict], dict]:
+        negative_examples: list[str],
+        tools: list[ToolSpec],
+        token_budget: int | None,
+    ) -> tuple[list[dict], dict]:
         trimmed = {"context": 0, "negative_examples": 0, "tools": 0}
         if token_budget is None:
             return messages, trimmed
@@ -199,7 +202,11 @@ class PromptBuilder:
                 break
         return messages, trimmed
 
-    def _trim_fallback_messages(self, messages: List[dict], token_budget: int) -> List[dict]:
+    def _trim_fallback_messages(
+        self,
+        messages: list[dict],
+        token_budget: int,
+    ) -> list[dict]:
         trimmed = list(messages)
         while trimmed and self._count_message_tokens(trimmed) > token_budget:
             if len(trimmed) > 1:
@@ -208,5 +215,5 @@ class PromptBuilder:
                 break
         return trimmed
 
-    def _count_message_tokens(self, messages: List[dict]) -> int:
+    def _count_message_tokens(self, messages: list[dict]) -> int:
         return int(count_tokens([m.get("content", "") for m in messages]))
