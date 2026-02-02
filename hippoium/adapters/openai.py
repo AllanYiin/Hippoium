@@ -40,7 +40,12 @@ class OpenAIAdapter(BaseAdapter):
     ) -> None:
         if openai is None:  # pragma: no cover
             raise ImportError("openai package is required for OpenAIAdapter")
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("openai_api_key")
+        self.api_key = (
+            api_key
+            or os.getenv("OPENAI-API-KEY")
+            or os.getenv("OPENAI_API_KEY")
+            or os.getenv("openai_api_key")
+        )
         if not self.api_key:
             raise ValueError("OpenAI API key not provided")
         self.model = model
