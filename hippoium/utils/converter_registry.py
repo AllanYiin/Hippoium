@@ -1,7 +1,7 @@
 import importlib
 import importlib.util
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
 
 try:
     import yaml
@@ -38,18 +38,18 @@ class BaseConverter(ABC):
 # Registry
 # --------------------------------------------------------------------- #
 class ConverterRegistry:
-    def __init__(self, config: Optional[Union[str, Dict[str, Any]]] = None) -> None:
+    def __init__(self, config: Optional[Union[str, dict[str, Any]]] = None) -> None:
         # 1️⃣ 讀 YAML or dict
         if config is None:
             path = "config/context_exchange.yaml"
             if yaml is None:
                 raise RuntimeError("PyYAML 未安裝且未傳入 config dict")
-            with open(path, "r", encoding="utf-8") as f:
-                cfg: Dict[str, Any] = yaml.safe_load(f) or {}
+            with open(path, encoding="utf-8") as f:
+                cfg: dict[str, Any] = yaml.safe_load(f) or {}
         elif isinstance(config, str):
             if yaml is None:
                 raise RuntimeError("PyYAML 未安裝且 config 為路徑")
-            with open(config, "r", encoding="utf-8") as f:
+            with open(config, encoding="utf-8") as f:
                 cfg = yaml.safe_load(f) or {}
         else:
             cfg = config or {}
@@ -58,12 +58,14 @@ class ConverterRegistry:
         self.default_output_format: str = cfg.get("default_output_format", "hippoium")
         self.auto_detect_format: bool = cfg.get("auto_detect_format", False)
 
-        self._converters: Dict[str, BaseConverter] = {}
+        self._converters: dict[str, BaseConverter] = {}
         for fmt, dotted in (cfg.get("converters") or {}).items():
             self._register_from_path(fmt, dotted)
 
     # ---------- public API ------------------------------------------- #
-    def register_converter(self, converter: BaseConverter, *, name: Optional[str] = None) -> None:
+    def register_converter(
+        self, converter: BaseConverter, *, name: Optional[str] = None
+    ) -> None:
         fmt = name or getattr(converter, "name", None)
         if not fmt:
             raise ValueError("Converter 需具備 name")
@@ -131,12 +133,15 @@ class ConverterRegistry:
         if isinstance(data, dict):
             if any(k in data for k in ("resources", "prompts", "tools")):
                 return "mcp"
-            if any(k in data for k in ("capabilities", "artifactId", "artifacts", "history")):
+            if any(
+                k in data
+                for k in ("capabilities", "artifactId", "artifacts", "history")
+            ):
                 return "a2a"
         return "hippoium"
 
     # ---------------- parse_context (helper) ------------------------- #
-    def parse_context(self, data: Any) -> Dict[str, list]:
+    def parse_context(self, data: Any) -> dict[str, list]:
         """
         根據偵測結果把外部 context 拆解成：
           {memory_items:[…], prompt_templates:[…], tool_specs:[…]}
@@ -148,23 +153,33 @@ class ConverterRegistry:
         if conv is None:
             raise ValueError(f"No converter for format: {fmt}")
 
-        out: Dict[str, list] = {}
+        out: dict[str, list] = {}
         if fmt == "mcp":
             if "resources" in data:
-                out["memory_items"] = [conv.parse_memory_item(r) for r in data["resources"]]
+                out["memory_items"] = [
+                    conv.parse_memory_item(r) for r in data["resources"]
+                ]
             if "prompts" in data:
-                out["prompt_templates"] = [conv.parse_prompt_template(p) for p in data["prompts"]]
+                out["prompt_templates"] = [
+                    conv.parse_prompt_template(p) for p in data["prompts"]
+                ]
             if "tools" in data:
                 out["tool_specs"] = [conv.parse_tool_spec(t) for t in data["tools"]]
         elif fmt == "a2a":
             if "artifacts" in data:
-                out["memory_items"] = [conv.parse_memory_item(a) for a in data["artifacts"]]
+                out["memory_items"] = [
+                    conv.parse_memory_item(a) for a in data["artifacts"]
+                ]
             if "capabilities" in data:
-                out["tool_specs"] = [conv.parse_tool_spec(c) for c in data["capabilities"]]
+                out["tool_specs"] = [
+                    conv.parse_tool_spec(c) for c in data["capabilities"]
+                ]
             if "history" in data:
                 sys_prompts = [m for m in data["history"] if m.get("role") == "system"]
                 if sys_prompts:
-                    out["prompt_templates"] = [conv.parse_prompt_template(m) for m in sys_prompts]
+                    out["prompt_templates"] = [
+                        conv.parse_prompt_template(m) for m in sys_prompts
+                    ]
         return out
 
     # ---------- internal: import helper ------------------------------ #

@@ -1,21 +1,31 @@
 
 import types
-import json
+
 from hippoium.utils.convert_mcp import MCPConverter
 from hippoium.utils.converter_registry import ConverterRegistry
 
+
 def create_dummy_memory(content="Example memory content", key="mem1"):
-    return types.SimpleNamespace(content=content, key=key, metadata={"description": "Dummy memory"})
+    return types.SimpleNamespace(
+        content=content, key=key, metadata={"description": "Dummy memory"}
+    )
+
 
 def create_dummy_prompt(name="SamplePrompt", content="This is a prompt template."):
-    return types.SimpleNamespace(name=name, content=content, description="Dummy prompt template")
+    return types.SimpleNamespace(
+        name=name, content=content, description="Dummy prompt template"
+    )
+
 
 def create_dummy_tool(name="dummy_tool"):
     params = {
         "arg1": {"type": "string", "description": "First argument"},
-        "arg2": {"type": "integer", "description": "Second argument"}
+        "arg2": {"type": "integer", "description": "Second argument"},
     }
-    return types.SimpleNamespace(name=name, description="Dummy tool for testing", parameters=params)
+    return types.SimpleNamespace(
+        name=name, description="Dummy tool for testing", parameters=params
+    )
+
 
 def test_mcp_conversion_roundtrip():
     converter = MCPConverter()
@@ -44,7 +54,11 @@ def test_mcp_conversion_roundtrip():
     assert getattr(mem_back, "content", None) == mem.content
     assert getattr(prompt_back, "content", None) == prompt.content
     assert getattr(tool_back, "name", None) == tool.name
-    assert hasattr(tool_back, "parameters") and tool_back.parameters.get("arg1", {}).get("description") == "First argument"
+    assert (
+        hasattr(tool_back, "parameters")
+        and tool_back.parameters.get("arg1", {}).get("description") == "First argument"
+    )
+
 
 def test_registry_integration_mcp():
     # Prepare a config dict for registry
@@ -54,8 +68,8 @@ def test_registry_integration_mcp():
         "auto_detect_format": True,
         "converters": {
             "mcp": "utils.convert_mcp.MCPConverter",
-            "a2a": "utils.convert_a2a.A2AConverter"
-        }
+            "a2a": "utils.convert_a2a.A2AConverter",
+        },
     }
     registry = ConverterRegistry(config)
     # Create dummy objects
@@ -74,12 +88,16 @@ def test_registry_integration_mcp():
     mcp_context = {
         "resources": [mem_data],
         "prompts": [prompt_data],
-        "tools": [tool_data]
+        "tools": [tool_data],
     }
     # Auto-detect and parse the context back to internal objects
     parsed = registry.parse_context(mcp_context)
     # Verify all sections parsed
-    assert "memory_items" in parsed and "prompt_templates" in parsed and "tool_specs" in parsed
+    assert (
+        "memory_items" in parsed
+        and "prompt_templates" in parsed
+        and "tool_specs" in parsed
+    )
     mem_back = parsed["memory_items"][0]
     prompt_back = parsed["prompt_templates"][0]
     tool_back = parsed["tool_specs"][0]
