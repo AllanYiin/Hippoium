@@ -1,13 +1,15 @@
 # utils/convert_a2a.py
 
-from typing import Any, Dict
+from typing import Any
+
 from hippoium.utils.converter_registry import BaseConverter
+
 
 class A2AConverter(BaseConverter):
     """Converter for Google's Agent-to-Agent (A2A) protocol format."""
     name = "a2a"
 
-    def convert_memory_item(self, item: Any) -> Dict[str, Any]:
+    def convert_memory_item(self, item: Any) -> dict[str, Any]:
         """Convert an internal MemoryItem to A2A artifact format (as a dict)."""
         # Represent memory as an A2A artifact with text content.
         artifact_id = getattr(item, "key", None) or str(id(item))
@@ -25,9 +27,10 @@ class A2AConverter(BaseConverter):
         # you could use kind "file" with base64 encoding (not shown here).
         return artifact
 
-    def parse_memory_item(self, data: Dict[str, Any]) -> Any:
+    def parse_memory_item(self, data: dict[str, Any]) -> Any:
         """Parse an A2A artifact dict back into an internal MemoryItem object."""
-        # Expect data keys: artifactId, name, parts (with at least one part containing content)
+        # Expect keys: artifactId, name, parts
+        # (at least one part should carry content).
         parts = data.get("parts", [])
         content = ""
         if parts:
@@ -51,7 +54,7 @@ class A2AConverter(BaseConverter):
             dummy.metadata = metadata
             return dummy
 
-    def convert_prompt_template(self, template: Any) -> Dict[str, Any]:
+    def convert_prompt_template(self, template: Any) -> dict[str, Any]:
         """Convert an internal PromptTemplate to A2A message format (system role)."""
         # Represent prompt template as a system message in A2A.
         prompt_message = {
@@ -63,11 +66,12 @@ class A2AConverter(BaseConverter):
                 }
             ]
         }
-        # (A2A typically doesn't include prompt templates in agent cards, but we model it as a message.)
+        # A2A 通常不在 agent card 放 prompt template；
+        # 這裡以單一 system message 形式表示。
         return prompt_message
 
-    def parse_prompt_template(self, data: Dict[str, Any]) -> Any:
-        """Parse an A2A message dict (system prompt) back into an internal PromptTemplate object."""
+    def parse_prompt_template(self, data: dict[str, Any]) -> Any:
+        """Parse A2A system message back into an internal PromptTemplate."""
         # Expect data keys: role, parts (list of parts with text).
         parts = data.get("parts", [])
         content = ""
@@ -88,7 +92,7 @@ class A2AConverter(BaseConverter):
             dummy.description = description
             return dummy
 
-    def convert_tool_spec(self, tool: Any) -> Dict[str, Any]:
+    def convert_tool_spec(self, tool: Any) -> dict[str, Any]:
         """Convert an internal ToolSpec to A2A capability format."""
         # Represent tool as an A2A capability (similar to an agent card entry).
         capability = {
@@ -96,10 +100,11 @@ class A2AConverter(BaseConverter):
             "description": getattr(tool, "description", "") or "",
             "parameters": tool.parameters if hasattr(tool, "parameters") else {}
         }
-        # In a full A2A Agent Card, capabilities might include endpoints or auth, which are omitted here.
+        # A full A2A Agent Card may include endpoint/auth metadata;
+        # this lightweight converter omits those fields.
         return capability
 
-    def parse_tool_spec(self, data: Dict[str, Any]) -> Any:
+    def parse_tool_spec(self, data: dict[str, Any]) -> Any:
         """Parse an A2A capability dict back into an internal ToolSpec object."""
         name = data.get("name") or ""
         description = data.get("description") or ""
