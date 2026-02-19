@@ -1,4 +1,6 @@
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import timedelta
+from threading import Event, RLock, Thread
 from typing import Optional
 
 from hippoium.core.cer.compressor import Compressor
@@ -23,6 +25,8 @@ class DefaultContextEngine(ContextEngineProtocol):
         session_ttl: Optional[timedelta] = timedelta(minutes=30),
         compression_debug: bool = False,
         compression_preview_chars: int = 80,
+        enable_background_workers: bool = False,
+        housekeeping_interval_seconds: float = 30.0,
     ):
         # S-tier: session cache (stores entire conversation history by session ID)
         self.s_cache = stores.SCache(ttl=session_ttl)
@@ -34,6 +38,37 @@ class DefaultContextEngine(ContextEngineProtocol):
         self.current_session: Optional[str] = None
         self.compression_debug = compression_debug
         self.compression_preview_chars = compression_preview_chars
+        self.enable_background_workers = enable_background_workers
+        self.housekeeping_interval_seconds = max(housekeeping_interval_seconds, 1.0)
+
+        self._memory_executor: ThreadPoolExecutor | None = None
+        self._compression_executor: ThreadPoolExecutor | None = None
+        self._housekeeping_executor: ThreadPoolExecutor | None = None
+        self._housekeeping_stop = Event()
+        self._housekeeping_thread: Thread | None = None
+        self._compression_lock = RLock()
+        self._compression_cache: dict[str, list[MemoryItem]] = {}
+        self._compression_jobs: dict[str, Future[list[MemoryItem]]] = {}
+        self._compression_fingerprints: dict[str, tuple[str, ...]] = {}
+
+        if self.enable_background_workers:
+            self._memory_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hippo-memory")
+            self._compression_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hippo-compression")
+            self._housekeeping_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hippo-housekeeping")
+            self._housekeeping_thread = Thread(target=self._housekeeping_loop, daemon=True)
+            self._housekeeping_thread.start()
+
+    def close(self) -> None:
+        """釋放背景執行緒資源，避免測試或程序結束時殘留 worker。"""
+        self._housekeeping_stop.set()
+        if self._housekeeping_thread and self._housekeeping_thread.is_alive():
+            self._housekeeping_thread.join(timeout=1.0)
+        for executor in (self._memory_executor, self._compression_executor, self._housekeeping_executor):
+            if executor is not None:
+                executor.shutdown(wait=False, cancel_futures=True)
+
+    def __del__(self) -> None:
+        self.close()
 
     def write_turn(
         self,
@@ -47,39 +82,31 @@ class DefaultContextEngine(ContextEngineProtocol):
         """
         if metadata is None:
             metadata = {}
+        if self.enable_background_workers and self._memory_executor is not None:
+            self._memory_executor.submit(self._write_turn_sync, role, content, dict(metadata))
+            return
+        self._write_turn_sync(role, content, dict(metadata))
+
+    def _write_turn_sync(self, role: str, content: str, metadata: dict) -> None:
         # Determine session (conversation) ID from metadata or use a default
         session_id = metadata.get("session_id") or metadata.get("conv_id") or "default"
         self.current_session = session_id
 
-        # Automatic annotation of the turn status
         status = self._annotate_status(role, content)
         metadata["status"] = status
-        metadata["role"] = role  # store role for context reconstruction
+        metadata["role"] = role
 
-        # Create a MemoryItem for this turn
-        mem_item = MemoryItem(
-            content=content,
-            metadata=dict(metadata),
-        )  # use copy of metadata
-        # Store in session cache (S-tier) as part of conversation history list
+        mem_item = MemoryItem(content=content, metadata=dict(metadata))
         history = self.s_cache.get(session_id) or []
         history.append(mem_item)
         self.s_cache.put(session_id, history)
 
-        # Store in short-term buffer (M-tier) for immediate context (as plain text)
-        # Use a namespaced key to preserve order without collisions
         key = build_namespaced_key(session_id, str(len(history)))
-        # MBuffer will evict old entries if over capacity.
         self.m_buffer.put(key, content)
 
-        # (Optional) Store in long-term vector (L-tier) for archival or retrieval.
-        # For example, store user messages under a user-specific key for long-term
-        # memory.
         if "user_id" in metadata:
             user_key = build_namespaced_key("user", str(metadata["user_id"]))
             self.l_vector.put(user_key, mem_item)
-        # Could also store all turns in LVector if long-term archival is desired:
-        # self.l_vector.put(f"turn:{session_id}-{len(history)}", mem_item)
 
     def get_context_for_scope(
         self,
@@ -111,9 +138,10 @@ class DefaultContextEngine(ContextEngineProtocol):
                     and item.metadata.get("status") == "WARN"
                 )
             ]
-            # Apply compression to the filtered history
-            compressed_history = self._compress_history(filtered_history)
-            result = compressed_history
+            if self.enable_background_workers and self._compression_executor is not None:
+                result = self._get_task_scope_context_async(conv_id, filtered_history)
+            else:
+                result = self._compress_history(filtered_history)
         elif scope == "user":
             # For user scope, retrieve long-term memory by user ID (key is user id)
             if key:
@@ -141,6 +169,51 @@ class DefaultContextEngine(ContextEngineProtocol):
             result = [MemoryItem(content=txt, metadata={}) for txt in result_texts]
 
         return result
+
+    def _get_task_scope_context_async(self, conv_id: str, filtered_history: list[MemoryItem]) -> list[MemoryItem]:
+        fingerprint = tuple(item.content for item in filtered_history)
+        with self._compression_lock:
+            cached = self._compression_cache.get(conv_id)
+            cached_fingerprint = self._compression_fingerprints.get(conv_id)
+            if cached is not None and cached_fingerprint == fingerprint:
+                return cached
+
+            pending = self._compression_jobs.get(conv_id)
+            if pending is None or pending.done():
+                self._compression_jobs[conv_id] = self._compression_executor.submit(
+                    self._compress_for_session,
+                    conv_id,
+                    filtered_history,
+                    fingerprint,
+                )
+
+        # 非阻塞：若背景壓縮尚未完成，直接回傳裁切後內容以避免卡住 UI。
+        return filtered_history[-50:] if len(filtered_history) > 50 else filtered_history
+
+    def _compress_for_session(
+        self,
+        conv_id: str,
+        history: list[MemoryItem],
+        fingerprint: tuple[str, ...],
+    ) -> list[MemoryItem]:
+        compressed = self._compress_history(history)
+        with self._compression_lock:
+            self._compression_cache[conv_id] = compressed
+            self._compression_fingerprints[conv_id] = fingerprint
+            self._compression_jobs.pop(conv_id, None)
+        return compressed
+
+    def _housekeeping_loop(self) -> None:
+        while not self._housekeeping_stop.wait(self.housekeeping_interval_seconds):
+            if self._housekeeping_executor is None:
+                continue
+            self._housekeeping_executor.submit(self._run_housekeeping)
+
+    def _run_housekeeping(self) -> None:
+        with self.s_cache._lock:
+            self.s_cache._evict_expired()
+        with self.m_buffer._lock:
+            self.m_buffer._evict_expired()
 
     def dump_memory(self) -> list[dict]:
         """
