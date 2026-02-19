@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 from hippoium.core.builder.prompt_builder import PromptBuilder
 from hippoium.engine import DefaultContextEngine
@@ -26,7 +26,11 @@ def setup_logger(name: str) -> logging.Logger:
 
 
 class MockLLMClient(LLMClient):
-    def complete(self, messages: Sequence[Message] | Sequence[dict], **opts: object) -> str:
+    def complete(
+        self,
+        messages: Sequence[Message] | Sequence[dict],
+        **opts: object,
+    ) -> str:
         del opts
         last = messages[-1]["content"] if messages else ""
         return f"（Mock 回覆）你剛剛問：{last}。提醒：這是 Mock 模式。"

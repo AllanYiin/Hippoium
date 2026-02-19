@@ -6,7 +6,12 @@ from hippoium.errors import BadRequestError, TimeoutError
 
 
 class FakeRateLimitError(Exception):
-    def __init__(self, message: str, status_code: int = 429, request_id: str = "req-429") -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 429,
+        request_id: str = "req-429",
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.request_id = request_id
@@ -72,7 +77,10 @@ def test_retry_on_rate_limit_then_success(monkeypatch):
     monkeypatch.setattr("hippoium.adapters.openai.openai", fake)
     monkeypatch.setattr("hippoium.adapters.retry.time.sleep", lambda *_: None)
 
-    adapter = OpenAIAdapter(api_key="key-123", retry_config=RetryConfig(max_attempts=2, base_delay=0))
+    adapter = OpenAIAdapter(
+        api_key="key-123",
+        retry_config=RetryConfig(max_attempts=2, base_delay=0),
+    )
     assert adapter.complete("hi") == "ok"
     assert fake.ChatCompletion.calls == 2
 
@@ -82,7 +90,10 @@ def test_timeout_retries_then_raises(monkeypatch):
     monkeypatch.setattr("hippoium.adapters.openai.openai", fake)
     monkeypatch.setattr("hippoium.adapters.retry.time.sleep", lambda *_: None)
 
-    adapter = OpenAIAdapter(api_key="key-123", retry_config=RetryConfig(max_attempts=2, base_delay=0))
+    adapter = OpenAIAdapter(
+        api_key="key-123",
+        retry_config=RetryConfig(max_attempts=2, base_delay=0),
+    )
     with pytest.raises(TimeoutError):
         adapter.complete("hi")
     assert fake.ChatCompletion.calls == 2
@@ -93,7 +104,10 @@ def test_bad_request_no_retry(monkeypatch):
     monkeypatch.setattr("hippoium.adapters.openai.openai", fake)
     monkeypatch.setattr("hippoium.adapters.retry.time.sleep", lambda *_: None)
 
-    adapter = OpenAIAdapter(api_key="key-123", retry_config=RetryConfig(max_attempts=3, base_delay=0))
+    adapter = OpenAIAdapter(
+        api_key="key-123",
+        retry_config=RetryConfig(max_attempts=3, base_delay=0),
+    )
     with pytest.raises(BadRequestError):
         adapter.complete("hi")
     assert fake.ChatCompletion.calls == 1

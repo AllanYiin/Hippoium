@@ -116,3 +116,26 @@ hippoium/
 ## 📮 聯絡方式
 
 對 Hippoium 有任何疑問或建議，歡迎寄信至 [**dev@hippoium.ai**](mailto\:dev@hippoium.ai)。
+
+---
+
+## 🧪 Context Lab 測試工具（OpenAI + Hippoium）
+
+若你想同時觀察「原始對話 Context」與「Hippoium 處理後 Context」，可使用 Streamlit 測試工具：
+
+```bash
+pip install streamlit
+export OPENAI_API_KEY="<你的金鑰>"
+streamlit run docs/examples/openai_context_lab.py
+```
+
+畫面會切成三塊：
+
+1. 左側：一般對話 UI（串流回覆）。
+2. 中間：目前 assistant 的原始 context 文字。
+3. 右側：Hippoium 處理後的 context 文字。
+
+並同步顯示：
+
+- Context 壓縮比歷史。
+- 成本壓縮比歷史（含 prompt caching 命中率設定）。
