@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from hippoium.core.utils.time import utc_now
+
 
 @dataclass
 class Message:
     role: str
     content: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.metadata is None:
@@ -20,7 +21,7 @@ class Message:
 @dataclass
 class MemoryItem:
     content: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     ts: datetime = field(default_factory=utc_now)
 
     def __post_init__(self) -> None:
@@ -31,15 +32,15 @@ class MemoryItem:
 @dataclass
 class ToolSpec:
     name: str
-    description: Optional[str] = None
-    args_schema: Optional[Dict[str, Any]] = None
+    description: str | None = None
+    args_schema: dict[str, Any] | None = None
 
     @property
-    def parameters(self) -> Dict[str, Any]:
+    def parameters(self) -> dict[str, Any]:
         return self.args_schema or {}
 
     @parameters.setter
-    def parameters(self, value: Dict[str, Any]) -> None:
+    def parameters(self, value: dict[str, Any]) -> None:
         self.args_schema = value
 
 
@@ -47,17 +48,17 @@ class ToolSpec:
 class RetrievalResult:
     text: str
     score: float
-    source: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    source: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class Config:
     token_budget: int = 4096
-    cache_tiers: Dict[str, Any] = field(default_factory=dict)
-    provider: Dict[str, Any] = field(default_factory=dict)
-    request_timeout_s: Optional[int] = None
-    default_model: Optional[str] = None
-    max_messages: Optional[int] = None
-    cache_ttl_s: Optional[int] = None
-    extra: Dict[str, Any] = field(default_factory=dict)
+    cache_tiers: dict[str, Any] = field(default_factory=dict)
+    provider: dict[str, Any] = field(default_factory=dict)
+    request_timeout_s: int | None = None
+    default_model: str | None = None
+    max_messages: int | None = None
+    cache_ttl_s: int | None = None
+    extra: dict[str, Any] = field(default_factory=dict)

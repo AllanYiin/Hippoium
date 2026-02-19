@@ -1,100 +1,126 @@
 # hippoium/ports/mcp.py
 
-from typing import Optional, Union, Any, Dict
+from __future__ import annotations
+
+from typing import Any
 
 from pydantic import BaseModel
 
 from hippoium.ports.domain import MemoryItem, ToolSpec
 
+
 class PromptTemplate(BaseModel):
     """Represents a prompt template with optional placeholders."""
+
     content: str
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
+
 
 class MCPMessage(BaseModel):
     """
-    Represents a message in the Model Context Protocol (MCP) format (JSON-RPC 2.0).
-    Can be converted to/from internal structures like MemoryItem, PromptTemplate, and ToolSpec.
+    Represents a message in the Model Context Protocol (MCP) format.
+
+    The message follows JSON-RPC 2.0 and can be converted to or from
+    MemoryItem, PromptTemplate, and ToolSpec.
     """
+
     jsonrpc: str = "2.0"
-    id: Optional[Union[int, str]] = None
-    method: Optional[str] = None
-    params: Optional[Any] = None
-    result: Optional[Any] = None
-    error: Optional[Any] = None
+    id: int | str | None = None
+    method: str | None = None
+    params: Any | None = None
+    result: Any | None = None
+    error: Any | None = None
 
     @classmethod
-    def from_memory_item(cls, item: MemoryItem, request_id: Optional[Union[int, str]] = None) -> "MCPMessage":
-        """
-        Create an MCP message from a MemoryItem. This could be used to send memory content via MCP.
-        For example, using a hypothetical 'loadMemory' method to provide context.
-        """
-        return cls(jsonrpc="2.0", id=request_id, method="loadMemory",
-                   params={"content": item.content, "metadata": item.metadata})
+    def from_memory_item(
+        cls,
+        item: MemoryItem,
+        request_id: int | str | None = None,
+    ) -> MCPMessage:
+        """Create an MCP message that carries memory content."""
+        return cls(
+            jsonrpc="2.0",
+            id=request_id,
+            method="loadMemory",
+            params={"content": item.content, "metadata": item.metadata},
+        )
 
     @classmethod
-    def from_prompt(cls, prompt: PromptTemplate, request_id: Optional[Union[int, str]] = None) -> "MCPMessage":
-        """
-        Create an MCP request message from a PromptTemplate.
-        This could be used to send a prompt to an MCP server or client.
-        """
-        return cls(jsonrpc="2.0", id=request_id, method="submitPrompt",
-                   params={"content": prompt.content})
+    def from_prompt(
+        cls,
+        prompt: PromptTemplate,
+        request_id: int | str | None = None,
+    ) -> MCPMessage:
+        """Create an MCP request message from a prompt template."""
+        return cls(
+            jsonrpc="2.0",
+            id=request_id,
+            method="submitPrompt",
+            params={"content": prompt.content},
+        )
 
     @classmethod
-    def from_tool_spec(cls, tool: ToolSpec, request_id: Optional[Union[int, str]] = None) -> "MCPMessage":
-        """
-        Create an MCP message from a ToolSpec.
-        This could be used to register or describe a tool in JSON-RPC format (e.g., for tool availability).
-        """
-        return cls(jsonrpc="2.0", id=request_id, method="registerTool",
-                   params={"name": tool.name, "description": tool.description,
-                           "parameters": tool.args_schema})
+    def from_tool_spec(
+        cls,
+        tool: ToolSpec,
+        request_id: int | str | None = None,
+    ) -> MCPMessage:
+        """Create an MCP message from a tool specification."""
+        return cls(
+            jsonrpc="2.0",
+            id=request_id,
+            method="registerTool",
+            params={
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.args_schema,
+            },
+        )
 
     def to_memory_item(self) -> MemoryItem:
-        """
-        Convert an MCP message to a MemoryItem, if possible.
-        If this message contains memory content (in params or result), produce a MemoryItem.
-        """
+        """Convert an MCP message to MemoryItem when applicable."""
         data = None
         if isinstance(self.result, dict):
             data = self.result
-        elif isinstance(self.params, dict) and (self.method and "Memory" in self.method):
+        elif (
+            isinstance(self.params, dict)
+            and self.method
+            and "Memory" in self.method
+        ):
             data = self.params
+
         if data is not None:
             content = data.get("content", "")
             metadata = data.get("metadata") or {}
             return MemoryItem(content=content, metadata=metadata)
+
         raise ValueError("MCPMessage cannot be converted to MemoryItem")
 
     def to_prompt_template(self) -> PromptTemplate:
-        """
-        Convert an MCP message to a PromptTemplate, if possible.
-        If this message contains prompt content (e.g. in params or result), return a PromptTemplate.
-        """
+        """Convert an MCP message to PromptTemplate when applicable."""
         if isinstance(self.params, dict) and self.method == "submitPrompt":
             return PromptTemplate(content=self.params.get("content", ""))
         if isinstance(self.result, dict) and "content" in self.result:
-            # In case the response encapsulates prompt content
             return PromptTemplate(content=self.result.get("content", ""))
         if isinstance(self.result, str):
-            # If the result is a direct string, treat it as prompt content
             return PromptTemplate(content=self.result)
+
         raise ValueError("MCPMessage cannot be converted to PromptTemplate")
 
     def to_tool_spec(self) -> ToolSpec:
-        """
-        Convert an MCP message to a ToolSpec, if possible.
-        If this message contains tool specification details, return a ToolSpec.
-        """
+        """Convert an MCP message to ToolSpec when applicable."""
         if isinstance(self.params, dict) and self.method == "registerTool":
-            return ToolSpec(name=self.params.get("name", ""),
-                            description=self.params.get("description"),
-                            args_schema=self.params.get("parameters"))
+            return ToolSpec(
+                name=self.params.get("name", ""),
+                description=self.params.get("description"),
+                args_schema=self.params.get("parameters"),
+            )
         if isinstance(self.result, dict) and "name" in self.result:
-            # If result contains tool info
-            return ToolSpec(name=self.result.get("name", ""),
-                            description=self.result.get("description"),
-                            args_schema=self.result.get("parameters"))
+            return ToolSpec(
+                name=self.result.get("name", ""),
+                description=self.result.get("description"),
+                args_schema=self.result.get("parameters"),
+            )
+
         raise ValueError("MCPMessage cannot be converted to ToolSpec")

@@ -1,8 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Protocol, Sequence, runtime_checkable
+from collections.abc import Iterable, Sequence
+from typing import Any, Protocol, runtime_checkable
 
 from hippoium.ports.domain import Message, RetrievalResult
-from hippoium.ports.port_types import Artifact, ContextRecord, ContextBundle, ContextQuery, Score, TokenCount
+from hippoium.ports.port_types import (
+    Artifact,
+    ContextBundle,
+    ContextQuery,
+    ContextRecord,
+    Score,
+    TokenCount,
+)
 
 
 class ContextEngineProtocol(ABC):
@@ -22,7 +30,7 @@ class ContextEngineProtocol(ABC):
 
     # （選擇性）除錯用途：匯出目前記憶全部內容
     @abstractmethod
-    def dump_memory(self) -> List[dict]:
+    def dump_memory(self) -> list[dict]:
         ...
 
 
@@ -33,7 +41,7 @@ class LLMClient(Protocol):
 
 @runtime_checkable
 class EmbeddingClient(Protocol):
-    def embed(self, texts: Iterable[str], **opts: Any) -> List[List[float]]: ...
+    def embed(self, texts: Iterable[str], **opts: Any) -> list[list[float]]: ...
 
 
 @runtime_checkable
@@ -85,12 +93,12 @@ class TokenMeter(ABC):
 
 class RetrieverPort(ABC):
     @abstractmethod
-    def search(self, request: str, top_k: int) -> List[Message]: ...
+    def search(self, request: str, top_k: int) -> list[Message]: ...
 
 
 class ScorerPort(ABC):
     @abstractmethod
-    def score(self, query: str, docs: Sequence[Message]) -> List[Score]: ...
+    def score(self, query: str, docs: Sequence[Message]) -> list[Score]: ...
 
 
 @runtime_checkable
@@ -100,7 +108,7 @@ class Cache(CacheProtocol, Protocol):
 
 @runtime_checkable
 class Retriever(Protocol):
-    def retrieve(self, query: str, **opts: Any) -> List[RetrievalResult]: ...
+    def retrieve(self, query: str, **opts: Any) -> list[RetrievalResult]: ...
 
 
 @runtime_checkable
@@ -109,4 +117,8 @@ class VectorIndex(Protocol):
 
     def add(self, key: str, vector: Sequence[float], payload: Any) -> None: ...
 
-    def similarity_search(self, query_vector: Sequence[float], top_k: int = 5) -> List[tuple[str, Any, float]]: ...
+    def similarity_search(
+        self,
+        query_vector: Sequence[float],
+        top_k: int = 5,
+    ) -> list[tuple[str, Any, float]]: ...
