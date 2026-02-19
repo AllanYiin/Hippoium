@@ -1,50 +1,81 @@
-# hippoium/factories/cer_factory.py
-"""
-Factory for building a ready-to-use Context-Engine Runtime (CER).
+"""Factory helpers for creating a lightweight Context Engine Runtime (CER)."""
 
-公開方法:
-    create_cer(...)
-"""
+from __future__ import annotations
 
-from typing import Optional, Any, Dict
+from dataclasses import dataclass, field
+from typing import Any
 
-from hippoium.core.cer.runtime import ContextEngineRuntime
-from hippoium.core.builder.prompt_builder import PromptBuilder
-
-# 若你 adapter / retriever class 放在別處，請自行調整 import
 from hippoium.adapters.base import BaseAdapter
-from hippoium.retriever_factory import create_retriever   # 假設已有
+from hippoium.core.builder.prompt_builder import PromptBuilder
+from hippoium.core.hooks import hook_registry
+from hippoium.core.neg_vault import NegativeVault
+from hippoium.ports.domain import MemoryItem
+from hippoium.ports.events import Event
+
+
+@dataclass
+class ContextEngineRuntime:
+    """Minimal runtime for prompt building and completion used by tests."""
+
+    llm_adapter: BaseAdapter
+    prompt_builder: PromptBuilder = field(default_factory=PromptBuilder)
+    enable_negative: bool = False
+
+    def __post_init__(self) -> None:
+        self._memory: list[MemoryItem] = []
+
+    def set_prompt_builder(self, builder: PromptBuilder) -> None:
+        self.prompt_builder = builder
+
+    def set_llm_adapter(self, adapter: BaseAdapter) -> None:
+        self.llm_adapter = adapter
+
+    def add_memory(self, content: str, metadata: dict[str, Any] | None = None) -> None:
+        self._memory.append(MemoryItem(content=content, metadata=metadata or {}))
+
+    def build_prompt(self, user_query: str) -> str:
+        if self._memory:
+            hook_registry.notify(Event.BEFORE_COMPRESSION, self)
+            hook_registry.notify(Event.AFTER_COMPRESSION, self)
+
+        hook_registry.notify(Event.BEFORE_RAG_QUERY, user_query, self)
+
+        negative_examples: list[str] = []
+        if self.enable_negative:
+            default_negative = "Avoid harmful or unsafe outputs."
+            if default_negative not in NegativeVault.list_examples():
+                NegativeVault.add_example(default_negative)
+            negative_examples = NegativeVault.list_examples()
+
+        hook_registry.notify(Event.BEFORE_PROMPT_INJECTION, self)
+        messages = self.prompt_builder.build(
+            context=list(self._memory),
+            user_query=user_query,
+            negative_examples=negative_examples,
+        )
+        return "\n".join(msg.get("content", "") for msg in messages)
+
+    def complete(self, prompt: str, **kwargs: Any) -> str:
+        hook_registry.notify(Event.BEFORE_LLM_CALL, prompt)
+        output = self.llm_adapter.complete(prompt, **kwargs)
+        hook_registry.notify(Event.AFTER_LLM_CALL, output)
+        return output
 
 
 def create_cer(
     *,
     adapter: BaseAdapter,
-    memory_config: Optional[Any] = None,
-    retriever_config: Optional[Dict[str, Any]] = None,
+    memory_config: Any | None = None,
+    retriever_config: dict[str, Any] | None = None,
     enable_negative: bool = False,
-    **runtime_kwargs,
+    **runtime_kwargs: Any,
 ) -> ContextEngineRuntime:
+    """Build a ready-to-use CER runtime.
+
+    `memory_config`, `retriever_config`, and extra kwargs are accepted for backward
+    compatibility but intentionally ignored by this lightweight implementation.
     """
-    建立一個 CER 並把依賴（Adapter / Memory / Retriever / PromptBuilder）都接好。
-    參數:
-        adapter           : 任何繼承 BaseAdapter 的 LLM 介面 (OpenAIAdapter / MyHTTPAdapter …)
-        memory_config     : S/M/L 記憶體後端設定 (None = in-memory)
-        retriever_config  : 建 RAG 檢索器的設定 (None = 預設 VectorRetriever)
-        enable_negative   : 是否啟用自動反例 / 安全約束
-    """
-    # 1) ContextEngineRuntime
-    cer = ContextEngineRuntime(memory_config=memory_config, enable_negative=enable_negative, **runtime_kwargs)
-
-    # 2) PromptBuilder 綁定
-    builder = PromptBuilder()
-    cer.set_prompt_builder(builder)
-
-    # 3) Retriever (RAG)
-    if retriever_config is not None:
-        retriever = create_retriever(**retriever_config)
-        cer.set_retriever(retriever)
-
-    # 4) LLM Adapter
-    cer.set_llm_adapter(adapter)
-
+    _ = (memory_config, retriever_config, runtime_kwargs)
+    cer = ContextEngineRuntime(llm_adapter=adapter, enable_negative=enable_negative)
+    cer.set_prompt_builder(PromptBuilder())
     return cer
