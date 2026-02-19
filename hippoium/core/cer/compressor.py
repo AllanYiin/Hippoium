@@ -4,10 +4,10 @@ Context Trimmer – dedupe & diff-patch compression for conversation context.
 from __future__ import annotations
 
 import difflib
-from typing import List
-from hippoium.ports.port_types import DedupStrategy, TrimPolicy
+
 from hippoium.core.utils.hasher import hash_text
 from hippoium.core.utils.token_counter import count_tokens
+from hippoium.ports.port_types import DedupStrategy, TrimPolicy
 
 
 class Compressor:
@@ -20,7 +20,7 @@ class Compressor:
         self.trim_policy = trim_policy
 
     # ---------- public API ---------- #
-    def compress(self, chunks: List[str]) -> List[str]:
+    def compress(self, chunks: list[str]) -> list[str]:
         if self.dedup_strategy == DedupStrategy.HASH:
             chunks = self._hash_dedupe(chunks)
         # Future: MINHASH support
@@ -32,9 +32,9 @@ class Compressor:
         return self._keep_tail(chunks)
 
     # ---------- internal helpers ---------- #
-    def _hash_dedupe(self, chunks: List[str]) -> List[str]:
+    def _hash_dedupe(self, chunks: list[str]) -> list[str]:
         seen: set[str] = set()
-        deduped: List[str] = []
+        deduped: list[str] = []
         for c in chunks:
             h = hash_text(c)
             if h not in seen:
@@ -42,7 +42,7 @@ class Compressor:
                 seen.add(h)
         return deduped
 
-    def _diff_patch(self, chunks: List[str]) -> List[str]:
+    def _diff_patch(self, chunks: list[str]) -> list[str]:
         if not chunks:
             return []
         base = chunks[0]
@@ -53,7 +53,7 @@ class Compressor:
             base = c
         return patches
 
-    def _keep_head(self, chunks: List[str], budget: int | None = None) -> List[str]:
+    def _keep_head(self, chunks: list[str], budget: int | None = None) -> list[str]:
         if budget is None:
             return chunks
         acc, out = 0, []
@@ -64,7 +64,7 @@ class Compressor:
             out.append(c)
         return out
 
-    def _keep_tail(self, chunks: List[str], budget: int | None = None) -> List[str]:
+    def _keep_tail(self, chunks: list[str], budget: int | None = None) -> list[str]:
         if budget is None:
             return chunks
         out, acc = [], 0

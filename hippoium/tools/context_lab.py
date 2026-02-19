@@ -1,8 +1,8 @@
-"""Context Lab utilities for comparing raw assistant context and Hippoium-processed context."""
+"""Context Lab utilities for comparing raw and Hippoium-processed context."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from hippoium.core.context_manager import context_session
 
@@ -43,7 +43,10 @@ def serialize_messages(messages: Iterable[dict[str, str]]) -> str:
     return "\n\n".join(chunks)
 
 
-def build_context_views(messages: list[dict[str, str]], latest_user_input: str) -> tuple[str, str]:
+def build_context_views(
+    messages: list[dict[str, str]],
+    latest_user_input: str,
+) -> tuple[str, str]:
     """Return two text views: raw assistant context vs Hippoium-compressed context."""
     raw_context = serialize_messages(messages)
 
