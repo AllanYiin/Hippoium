@@ -1,35 +1,45 @@
 # hippoium/core/builder/template_registry.py
 
 import os
-import yaml
 import string
-from typing import Dict, List, Optional
+from typing import Optional
+
+import yaml
 
 try:
     from hippoium.ports.mcp import PromptTemplate
 except ImportError:
     # Fallback: define a simple PromptTemplate if not available
     class PromptTemplate:
-        def __init__(self, content: str, name: Optional[str] = None, description: Optional[str] = None):
+        def __init__(
+            self,
+            content: str,
+            name: Optional[str] = None,
+            description: Optional[str] = None,
+        ):
             self.content = content
             self.name = name
             self.description = description
 
 class TemplateRegistry:
     """
-    Manages prompt templates. Supports loading templates from YAML files and dynamic registration.
-    Can query templates and their slots, and perform hot-reloading of templates from disk.
+    Manages prompt templates.
+
+    Supports loading templates from YAML files and dynamic registration.
+    Can query templates and their slots, and perform hot-reloading from disk.
     """
     def __init__(self) -> None:
-        self.templates: Dict[str, PromptTemplate] = {}
-        self.template_slots: Dict[str, List[str]] = {}
+        self.templates: dict[str, PromptTemplate] = {}
+        self.template_slots: dict[str, list[str]] = {}
         self._source_path: Optional[str] = None
-        self._file_templates: set = set()  # track templates loaded from files (for reload)
+        self._file_templates: set = set()  # Templates loaded from files.
 
     def load_from_path(self, path: str) -> None:
         """
-        Load prompt templates from the given path. If `path` is a directory, all .yaml/.yml files inside are loaded.
-        If `path` is a file, that YAML file is loaded.
+        Load prompt templates from a path.
+
+        If `path` is a directory, load all `.yaml`/`.yml` files inside.
+        If `path` is a file, load that YAML file.
         """
         self._source_path = path
         loaded_file_templates: set = set()
@@ -44,7 +54,7 @@ class TemplateRegistry:
             self._load_yaml_file(path, loaded_file_templates)
         else:
             raise FileNotFoundError(f"Template path {path} does not exist.")
-        # Remove any templates that were previously loaded from files but are no longer present
+        # Remove templates no longer present in source files.
         for name in list(self._file_templates):
             if name not in loaded_file_templates:
                 self.templates.pop(name, None)
@@ -54,7 +64,7 @@ class TemplateRegistry:
 
     def _load_yaml_file(self, file_path: str, loaded_names: set) -> None:
         """Helper to load templates from a single YAML file and update registry."""
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             data = yaml.safe_load(f)
         if data is None:
             return
@@ -85,7 +95,11 @@ class TemplateRegistry:
                 continue  # skip invalid entries
             description = entry.get("description")
             # Create PromptTemplate and store it
-            template = PromptTemplate(content=content, name=name, description=description)
+            template = PromptTemplate(
+                content=content,
+                name=name,
+                description=description,
+            )
             self.templates[name] = template
             # Determine slots (placeholders) in the content
             if entry.get("slots") is not None:
@@ -95,9 +109,9 @@ class TemplateRegistry:
             self.template_slots[name] = slots
             loaded_names.add(name)
 
-    def _extract_slots_from_content(self, content: str) -> List[str]:
-        """Extract placeholder slot names from a template content string (e.g., {name} in the text)."""
-        slots: List[str] = []
+    def _extract_slots_from_content(self, content: str) -> list[str]:
+        """Extract placeholder slot names from template content."""
+        slots: list[str] = []
         try:
             formatter = string.Formatter()
             for _, field_name, _, _ in formatter.parse(content):
@@ -109,14 +123,19 @@ class TemplateRegistry:
             slots = re.findall(r"\{(\w+)\}", content)
         # Remove duplicates while preserving order
         seen = set()
-        unique_slots: List[str] = []
+        unique_slots: list[str] = []
         for slot in slots:
             if slot not in seen:
                 seen.add(slot)
                 unique_slots.append(slot)
         return unique_slots
 
-    def register_template(self, name: str, content: str, description: Optional[str] = None) -> None:
+    def register_template(
+        self,
+        name: str,
+        content: str,
+        description: Optional[str] = None,
+    ) -> None:
         """
         Dynamically register a new template or update an existing one.
         """
@@ -125,24 +144,25 @@ class TemplateRegistry:
         # Compute slots for the template content
         slots = self._extract_slots_from_content(content)
         self.template_slots[name] = slots
-        # Note: dynamic templates are not added to _file_templates, so they persist through reloads
+        # Dynamic templates are not in _file_templates, so they persist on reload.
 
     def get_template(self, name: str) -> Optional[PromptTemplate]:
         """Retrieve a template by name."""
         return self.templates.get(name)
 
-    def get_template_slots(self, name: str) -> List[str]:
+    def get_template_slots(self, name: str) -> list[str]:
         """Get the list of slot placeholder names for a given template."""
         return self.template_slots.get(name, [])
 
-    def list_templates(self) -> List[str]:
+    def list_templates(self) -> list[str]:
         """List all template names available in the registry."""
         return list(self.templates.keys())
 
     def hot_reload(self) -> None:
         """
-        Reload templates from the original source path (if set via load_from_path).
-        Updates templates that changed on disk and retains dynamically registered templates.
+        Reload templates from the original source path.
+
+        Only works after `load_from_path`; keeps dynamically registered templates.
         """
         if not self._source_path:
             return

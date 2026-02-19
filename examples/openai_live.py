@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Sequence
+from collections.abc import Sequence
 
 from hippoium.core.builder.prompt_builder import PromptBuilder
 from hippoium.engine import DefaultContextEngine
@@ -30,7 +30,11 @@ class StreamingOpenAIClient(LLMClient):
         self.api_key = api_key
         self.model = model
 
-    def complete(self, messages: Sequence[Message] | Sequence[dict], **opts: object) -> str:
+    def complete(
+        self,
+        messages: Sequence[Message] | Sequence[dict],
+        **opts: object,
+    ) -> str:
         del opts
         from openai import OpenAI
 
