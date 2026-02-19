@@ -74,7 +74,10 @@ def stream_openai_response(client: OpenAI, model: str) -> str:
 def main() -> None:
     st.set_page_config(page_title="Hippoium Context Lab", layout="wide")
     st.title("Hippoium Context 測試工具")
-    st.caption("左側對話、中間原始 Context、右側 Hippoium Context，並追蹤壓縮比與費用壓縮比。")
+    st.caption(
+        "左側對話、中間原始 Context、右側 Hippoium Context，"
+        "並追蹤壓縮比與費用壓縮比。"
+    )
 
     init_state()
 
@@ -109,7 +112,10 @@ def main() -> None:
             answer = stream_openai_response(client, model)
             st.session_state.messages.append({"role": "assistant", "content": answer})
 
-            raw_context, hippo_context = build_context_views(st.session_state.messages, prompt)
+            raw_context, hippo_context = build_context_views(
+                st.session_state.messages,
+                prompt,
+            )
             output_tokens = estimate_tokens(answer)
             snapshot = build_compression_snapshot(
                 turn=len(st.session_state.history) + 1,
@@ -121,7 +127,7 @@ def main() -> None:
             )
             st.session_state.history.append(snapshot)
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception:  # noqa: BLE001
             logger.exception("OpenAI 呼叫失敗")
             st.error("OpenAI 呼叫失敗，請稍後再試或檢查 API 設定。")
 
@@ -132,7 +138,9 @@ def main() -> None:
         st.dataframe(
             frame.assign(
                 compression_ratio=lambda df: (df["compression_ratio"] * 100).round(2),
-                cost_compression_ratio=lambda df: (df["cost_compression_ratio"] * 100).round(2),
+                cost_compression_ratio=lambda df: (
+                    df["cost_compression_ratio"] * 100
+                ).round(2),
             ),
             use_container_width=True,
         )

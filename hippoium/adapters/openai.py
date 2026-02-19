@@ -1,12 +1,12 @@
 """OpenAI Adapter – 使用官方 API 進行補全與嵌入計算。"""
 from __future__ import annotations
-from collections.abc import Iterable, Sequence
+
 import importlib
 import importlib.util
 import logging
 import os
 import time
-from typing import List, Union
+from collections.abc import Iterable, Sequence
 
 from hippoium.adapters.base import BaseAdapter
 from hippoium.adapters.retry import RetryConfig, retry
@@ -52,7 +52,11 @@ class OpenAIAdapter(BaseAdapter):
         self.timeout = timeout
         self.retry_config = retry_config or RetryConfig()
 
-    def complete(self, prompt: Union[str, Sequence[dict], Sequence[Message]], **kwargs) -> str:
+    def complete(
+        self,
+        prompt: str | Sequence[dict] | Sequence[Message],
+        **kwargs,
+    ) -> str:
         """呼叫 ChatCompletion 取得模型回覆。"""
         messages = self._normalize_messages(prompt)
         model = kwargs.get("model", self.model)
@@ -87,7 +91,10 @@ class OpenAIAdapter(BaseAdapter):
         elapsed = time.monotonic() - start
         request_id = response.get("id")
         logger.info(
-            "OpenAI completion success; request_id=%s attempts=%s elapsed=%.2fs model=%s",
+            (
+                "OpenAI completion success; request_id=%s attempts=%s "
+                "elapsed=%.2fs model=%s"
+            ),
             request_id,
             attempts,
             elapsed,
@@ -95,11 +102,11 @@ class OpenAIAdapter(BaseAdapter):
         )
         return response["choices"][0]["message"]["content"]
 
-    def embeddings(self, text: str, **kwargs) -> List[float]:
+    def embeddings(self, text: str, **kwargs) -> list[float]:
         """取得文字的向量嵌入。"""
         return self.embed([text], **kwargs)[0]
 
-    def embed(self, texts: Iterable[str], **kwargs) -> List[List[float]]:
+    def embed(self, texts: Iterable[str], **kwargs) -> list[list[float]]:
         """取得多筆文字向量嵌入。"""
         model = kwargs.get("model", "text-embedding-ada-002")
         timeout = kwargs.get("timeout", self.timeout)
@@ -130,7 +137,10 @@ class OpenAIAdapter(BaseAdapter):
         elapsed = time.monotonic() - start
         request_id = resp.get("id")
         logger.info(
-            "OpenAI embedding success; request_id=%s attempts=%s elapsed=%.2fs model=%s inputs=%s",
+            (
+                "OpenAI embedding success; request_id=%s attempts=%s "
+                "elapsed=%.2fs model=%s inputs=%s"
+            ),
             request_id,
             attempts,
             elapsed,
@@ -140,7 +150,9 @@ class OpenAIAdapter(BaseAdapter):
         return [item["embedding"] for item in resp["data"]]
 
     @staticmethod
-    def _normalize_messages(prompt: Union[str, Sequence[dict], Sequence[Message]]) -> list[dict]:
+    def _normalize_messages(
+        prompt: str | Sequence[dict] | Sequence[Message],
+    ) -> list[dict]:
         if isinstance(prompt, str):
             return [{"role": "user", "content": prompt}]
         if isinstance(prompt, Sequence):
@@ -152,25 +164,59 @@ class OpenAIAdapter(BaseAdapter):
                 if not isinstance(msg, dict):
                     raise ValueError(f"Message at index {idx} must be a dict")
                 if "role" not in msg or "content" not in msg:
-                    raise ValueError(f"Message at index {idx} must include role and content")
+                    raise ValueError(
+                        f"Message at index {idx} must include role and content"
+                    )
             return list(messages)
         raise ValueError("Prompt must be a string or a sequence of message dicts")
 
     @staticmethod
     def _map_openai_error(exc: Exception) -> ProviderError:
-        status_code = getattr(exc, "status_code", None) or getattr(exc, "http_status", None)
+        status_code = getattr(exc, "status_code", None) or getattr(
+            exc, "http_status", None
+        )
         request_id = getattr(exc, "request_id", None)
         name = exc.__class__.__name__.lower()
         message = str(exc) or "OpenAI request failed"
 
         if status_code == 429 or ("rate" in name and "limit" in name):
-            return RateLimitError(message, status_code=status_code, request_id=request_id, cause=exc)
+            return RateLimitError(
+                message,
+                status_code=status_code,
+                request_id=request_id,
+                cause=exc,
+            )
         if "timeout" in name:
-            return TimeoutError(message, status_code=status_code, request_id=request_id, cause=exc)
+            return TimeoutError(
+                message,
+                status_code=status_code,
+                request_id=request_id,
+                cause=exc,
+            )
         if status_code and 500 <= status_code <= 599:
-            return TransientServerError(message, status_code=status_code, request_id=request_id, cause=exc)
+            return TransientServerError(
+                message,
+                status_code=status_code,
+                request_id=request_id,
+                cause=exc,
+            )
         if status_code in (401, 403) or "auth" in name or "permission" in name:
-            return AuthError(message, status_code=status_code, request_id=request_id, cause=exc)
+            return AuthError(
+                message,
+                status_code=status_code,
+                request_id=request_id,
+                cause=exc,
+            )
         if status_code and 400 <= status_code <= 499:
-            return BadRequestError(message, status_code=status_code, request_id=request_id, cause=exc)
-        return ProviderError(message, status_code=status_code, request_id=request_id, cause=exc)
+            return BadRequestError(
+                message,
+                status_code=status_code,
+                request_id=request_id,
+                cause=exc,
+            )
+        return ProviderError(
+            message,
+            status_code=status_code,
+            request_id=request_id,
+            cause=exc,
+        )
